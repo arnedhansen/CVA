@@ -1,6 +1,7 @@
 %% CVA_lme_interaction
 %
-% Exploratory: tests whether the CSF→EEG relationship is moderated by age group.
+% Stage 2 analysis (aging idea):
+% tests whether the CSF->EEG relationship is moderated by age group.
 %
 % Model (H3):
 %   [alpha_z / gfp_z] ~ CSF_z * age_group + skull_z + sex_c
@@ -8,6 +9,10 @@
 %% Setup
 dirs = CVA_paths();
 load(fullfile(dirs.fex, 'CVA_master_matrix.mat'), 'master');
+
+if isempty(master)
+    error('Master matrix is empty. Cannot fit age interaction models.');
+end
 
 %% Z-score
 zsc = @(x) (x - mean(x)) ./ (2 * std(x));
@@ -24,9 +29,9 @@ mdl_alpha = fitlm(master, 'alpha_z ~ CSF_z * age_group + skull_z + sex_c');
 mdl_gfp   = fitlm(master, 'gfp_z   ~ CSF_z * age_group + skull_z + sex_c');
 
 %% Report
-fprintf('\n========== H3: CSF × Age → Alpha ==========\n');
+fprintf('\n========== Stage 2: CSF x Age Group -> Alpha ==========\n');
 disp(mdl_alpha);
-fprintf('\n========== H3: CSF × Age → GFP ==========\n');
+fprintf('\n========== Stage 2: CSF x Age Group -> GFP ==========\n');
 disp(mdl_gfp);
 
 %% Save
