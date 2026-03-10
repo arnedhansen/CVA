@@ -3,9 +3,13 @@
 % Computes and plots a group-level posterior alpha topography.
 % Alpha band is defined per subject as [IAF-4, IAF+2], then averaged.
 
-startup;
-setup;
+CVA_init_toolboxes();
 dirs = CVA_paths();
+
+if ~exist('ft_topoplotER', 'file') || ~exist('ft_freqanalysis', 'file')
+    error(['FieldTrip plotting/spectral functions not found on path. ', ...
+           'Add FieldTrip and rerun.']);
+end
 
 alphaFile = fullfile(dirs.fex, 'CVA_alpha_power.mat');
 if ~exist(alphaFile, 'file')

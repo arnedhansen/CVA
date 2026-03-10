@@ -10,7 +10,8 @@
 dirs = CVA_paths();
 
 %% Load CSV
-demo = readtable(dirs.demo, 'Delimiter', ',');
+demoFile = resolve_demo_file(dirs);
+demo = readtable(demoFile, 'Delimiter', ',');
 rawNames = demo.Properties.VariableNames;
 normNames = lower(regexprep(rawNames, '[^a-zA-Z0-9]', ''));
 
@@ -64,3 +65,23 @@ demo_out = demo_out(~isnan(demo_out.age_mid), :);
 outFile  = fullfile(dirs.fex, 'CVA_demographics.mat');
 save(outFile, 'demo_out');
 fprintf('Saved demographics for %d subjects.\n', height(demo_out));
+
+function demoFile = resolve_demo_file(dirs)
+candidates = {
+    dirs.demo
+    fullfile(fileparts(fileparts(fileparts(dirs.eeg_raw))), 'Participants_MPILMBB_LEMON.csv')
+    'W:\Students\Arne\CVA\data\Participants_MPILMBB_LEMON.csv'
+    'W:\Students\Arne\CVA\Participants_MPILMBB_LEMON.csv'
+    '/Volumes/g_psyplafor_methlab$/Students/Arne/Participants_MPILMBB_LEMON.csv'
+    '/Volumes/g_psyplafor_methlab$/Students/Arne/CVA/Participants_MPILMBB_LEMON.csv'
+};
+
+for i = 1:numel(candidates)
+    if exist(candidates{i}, 'file')
+        demoFile = candidates{i};
+        return;
+    end
+end
+
+error(['Demographics CSV not found. Checked: ', strjoin(candidates, ' | ')]);
+end

@@ -9,10 +9,14 @@
 %   gfp_out: table with columns [subID, gfp_mean, gfp_alpha]
 
 %% Setup
-startup;
-setup;
+CVA_init_toolboxes();
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
+
+if ~exist('ft_freqanalysis', 'file')
+    error(['FieldTrip function ft_freqanalysis not found on path. ', ...
+           'Add FieldTrip and rerun.']);
+end
 
 % Load IAF values from alpha extraction
 load(fullfile(dirs.fex, 'CVA_alpha_power.mat'), 'alpha_out');

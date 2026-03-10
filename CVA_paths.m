@@ -7,11 +7,7 @@ function dirs = CVA_paths()
 %   directories here and reference dirs throughout all scripts.
 
 %% Data root
-if ispc
-    dataRoot = 'C:\Users\dummy\CVA\data';
-else
-    dataRoot = '/Volumes/g_psyplafor_methlab$/Students/Arne/CVA/data';
-end
+dataRoot = resolve_data_root();
 
 %% Raw data
 dirs.eeg_raw   = fullfile(dataRoot, 'EEG');   % preprocessed .set/.fdt from LEMON
@@ -36,4 +32,5 @@ for i = 1:numel(fields)
     if ~contains(d, '.csv') && ~exist(d, 'dir')
         mkdir(d);
     end
+end
 end

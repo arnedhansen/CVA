@@ -49,15 +49,10 @@ clc;
 projectRoot = resolve_project_root();
 addpath(genpath(projectRoot));
 
-% Optionally run user startup if available on MATLAB path.
-if exist('startup', 'file')
-    % Run startup in base workspace so any clear/reset remains isolated
-    % from the master function workspace.
-    evalin('base', 'startup;');
-    % startup may reset MATLAB paths; re-add project tree afterwards.
-    projectRoot = resolve_project_root();
-    addpath(genpath(projectRoot));
-end
+% One-time toolbox initialization for the full pipeline. setup() is
+% intentionally not called here because external setup scripts may be
+% project-specific and fail when the repository is nested differently.
+CVA_init_toolboxes(false);
 
 %% Paths
 dirs = CVA_paths();

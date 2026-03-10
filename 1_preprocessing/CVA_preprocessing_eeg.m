@@ -8,10 +8,14 @@
 % Output: dirs.eeg_proc / sub-XXXXXX_EC_clean.mat
 
 %% Setup
-startup;
-setup;
+CVA_init_toolboxes();
 dirs = CVA_paths();
 subjects = CVA_get_subjects();
+
+if ~exist('ft_preprocessing', 'file')
+    error(['FieldTrip function ft_preprocessing not found on path. ', ...
+           'Add FieldTrip and rerun.']);
+end
 
 for s = 1:numel(subjects)
     subID = subjects{s};
@@ -41,23 +45,57 @@ for s = 1:numel(subjects)
         cfg.overlap = 0;
         data       = ft_redefinetrial(cfg, data);
 
-        %% Reject noisy epochs (peak-to-peak > 90 µV)
-        % Step 1: detect artefact windows using ft_artifact_threshold
-        cfg                                = [];
-        cfg.continuous                     = 'no';       % data already epoched
-        cfg.artfctdef.threshold.channel    = 'all';
-        cfg.artfctdef.threshold.bpfilter   = 'no';       % no filter — raw amplitude
-        cfg.artfctdef.threshold.range      = 90e-6;      % peak-to-peak threshold (V)
-        [cfg, ~]                           = ft_artifact_threshold(cfg, data);
+        if isempty(data.trial)
+            warning('  No epochs available after segmentation for %s — excluding subject.', ...
+                subID);
+            continue;
+        end
 
-        % Step 2: reject epochs containing artefact windows
-        cfg.artfctdef.reject               = 'complete'; % discard entire epoch
-        cfg.artfctdef.crittoilim           = data.time{1}([1 end]);
-        data                               = ft_rejectartifact(cfg, data);
+        %% Reject noisy epochs (peak-to-peak > 90 uV)
+        nEpochsBefore = numel(data.trial);
+
+        % Use threshold in the native data unit to avoid over-rejection.
+        p2pThreshold = 90e-6; % default: 90 µV expressed in V
+        if isfield(data, 'unit') && ischar(data.unit)
+            switch lower(strtrim(data.unit))
+                case {'uv', 'microvolt', 'microvolts'}
+                    p2pThreshold = 90;
+                case {'mv', 'millivolt', 'millivolts'}
+                    p2pThreshold = 0.09;
+                otherwise
+                    p2pThreshold = 90e-6;
+            end
+        end
+
+        % Determine clean epochs directly from peak-to-peak amplitude.
+        % This avoids ft_rejectartifact edge-case crashes when all epochs are marked bad.
+        keepMask = false(1, nEpochsBefore);
+        for t = 1:nEpochsBefore
+            x = data.trial{t};
+            if isempty(x)
+                keepMask(t) = false;
+                continue;
+            end
+            p2p = max(x, [], 2) - min(x, [], 2);
+            keepMask(t) = all(isfinite(p2p)) && ~any(p2p > p2pThreshold);
+        end
+
+        nEpochsAfter = sum(keepMask);
+        if nEpochsAfter == 0
+            warning('  All epochs rejected for %s — excluding subject.', subID);
+            continue;
+        end
+
+        data.trial  = data.trial(keepMask);
+        data.time   = data.time(keepMask);
+        if isfield(data, 'sampleinfo') && ~isempty(data.sampleinfo)
+            data.sampleinfo = data.sampleinfo(keepMask, :);
+        end
+        if isfield(data, 'trialinfo') && ~isempty(data.trialinfo)
+            data.trialinfo = data.trialinfo(keepMask, :);
+        end
 
         % Log how many epochs survived
-        nEpochsBefore = numel(data.trial) + size(cfg.artfctdef.threshold.artifact, 1);
-        nEpochsAfter  = numel(data.trial);
         nRejected     = nEpochsBefore - nEpochsAfter;
         fprintf('  Epochs: %d retained, %d rejected (%.0f%%)\n', ...
             nEpochsAfter, nRejected, 100 * nRejected / nEpochsBefore);

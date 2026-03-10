@@ -11,10 +11,14 @@
 %   alpha_out: table with columns [subID, IAF, alpha_power]
 
 %% Setup
-startup;
-setup;
+CVA_init_toolboxes();
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
+
+if ~exist('ft_freqanalysis', 'file')
+    error(['FieldTrip function ft_freqanalysis not found on path. ', ...
+           'Add FieldTrip and rerun.']);
+end
 
 % Posterior electrode cluster (consistent with Klimesch 1999)
 posteriorChans = {'O1','O2','Oz','PO3','PO4','PO7','PO8'};

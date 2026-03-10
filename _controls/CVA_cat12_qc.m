@@ -16,6 +16,10 @@ dirs     = CVA_paths();
 subjects = CVA_get_subjects();
 
 qc_out = table();
+qc_out = table('Size', [0 5], ...
+               'VariableTypes', {'string','double','string','double','double'}, ...
+               'VariableNames', {'subID','IQR','IQR_grade','NCR','TIV_ml'});
+missingXmlCount = 0;
 
 for s = 1:numel(subjects)
     subID   = subjects{s};
@@ -23,7 +27,7 @@ for s = 1:numel(subjects)
                        ['cat_' subID '_ses-01_acq-mp2rage_brain.xml']);
 
     if ~exist(xmlFile, 'file')
-        warning('No CAT12 report for %s', subID);
+        missingXmlCount = missingXmlCount + 1;
         continue;
     end
 
@@ -39,30 +43,26 @@ for s = 1:numel(subjects)
             continue;
         end
 
-        iqr = S.qualityratings.IQR;
+        iqr = get_numeric_field(S.qualityratings, {'IQR','iqr'});
         if isfield(S.qualityratings, 'IQRp100rms')
             iqrGrade = S.qualityratings.IQRp100rms;
         else
             iqrGrade = 'NA';
         end
-        if isfield(S.qualityratings, 'NCR')
-            ncr = S.qualityratings.NCR;
-        else
-            ncr = NaN;
-        end
-        if isfield(S.subjectmeasures, 'vol_TIV')
-            icv = S.subjectmeasures.vol_TIV;
-        else
-            icv = NaN;
-        end
+        ncr = get_numeric_field(S.qualityratings, {'NCR','ncr'});
+        icv = get_numeric_field(S.subjectmeasures, {'vol_TIV','tiv','TIV'});
 
-        row    = table({subID}, iqr, {iqrGrade}, ncr, icv, ...
+        row    = table(string(subID), iqr, string(iqrGrade), ncr, icv, ...
                        'VariableNames', {'subID','IQR','IQR_grade','NCR','TIV_ml'});
         qc_out = [qc_out; row]; %#ok<AGROW>
 
     catch ME
         warning('Failed to read QC for %s: %s', subID, ME.message);
     end
+end
+
+if missingXmlCount > 0
+    warning('No CAT12 reports found for %d/%d subjects.', missingXmlCount, numel(subjects));
 end
 
 %% Flag poor quality
@@ -81,3 +81,19 @@ outFile = fullfile(dirs.fex, 'CVA_cat12_qc.mat');
 save(outFile, 'qc_out');
 writetable(qc_out, fullfile(dirs.fex, 'CVA_cat12_qc.csv'));
 fprintf('QC table saved to %s\n', outFile);
+
+function val = get_numeric_field(S, names)
+val = NaN;
+for k = 1:numel(names)
+    fn = names{k};
+    if isfield(S, fn)
+        raw = S.(fn);
+        if isnumeric(raw)
+            val = raw;
+        else
+            val = str2double(string(raw));
+        end
+        return;
+    end
+end
+end
