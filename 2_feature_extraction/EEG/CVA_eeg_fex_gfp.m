@@ -22,6 +22,12 @@ end
 load(fullfile(dirs.fex, 'CVA_alpha_power.mat'), 'alpha_out');
 
 gfp_out = table();
+summary = struct();
+summary.total_subjects = numel(subjects);
+summary.missing_input = 0;
+summary.missing_iaf = 0;
+summary.failed = 0;
+summary.saved = 0;
 
 for s = 1:numel(subjects)
     subID = subjects{s};
@@ -30,6 +36,7 @@ for s = 1:numel(subjects)
     inFile = fullfile(dirs.eeg_proc, [subID '_EC_clean.mat']);
     if ~exist(inFile, 'file')
         warning('Preprocessed file missing: %s', subID);
+        summary.missing_input = summary.missing_input + 1;
         continue;
     end
 
@@ -37,6 +44,7 @@ for s = 1:numel(subjects)
     iafRow = strcmp(alpha_out.subID, subID);
     if ~any(iafRow)
         warning('No IAF for %s — skipping GFP.', subID);
+        summary.missing_iaf = summary.missing_iaf + 1;
         continue;
     end
     iaf = alpha_out.IAF(iafRow);
@@ -64,9 +72,18 @@ for s = 1:numel(subjects)
         row     = table({subID}, gfpMean, gfpAlpha, ...
                         'VariableNames', {'subID','gfp_mean','gfp_alpha'});
         gfp_out = [gfp_out; row]; %#ok<AGROW>
+        summary.saved = summary.saved + 1;
+        CVA_log_event('gfp_fex', 'subject_processed', struct( ...
+            'subID', subID, ...
+            'gfp_mean', gfpMean, ...
+            'gfp_alpha', gfpAlpha));
 
     catch ME
         warning('Failed for %s: %s', subID, ME.message);
+        summary.failed = summary.failed + 1;
+        CVA_log_event('gfp_fex', 'subject_failed', struct( ...
+            'subID', subID, ...
+            'error', ME.message));
     end
 end
 
@@ -74,3 +91,5 @@ end
 outFile = fullfile(dirs.fex, 'CVA_gfp.mat');
 save(outFile, 'gfp_out');
 fprintf('Saved GFP for %d subjects to %s\n', height(gfp_out), outFile);
+summary.output_rows = height(gfp_out);
+CVA_log_event('gfp_fex', 'run_summary', summary);

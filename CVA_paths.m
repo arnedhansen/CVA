@@ -24,6 +24,7 @@ dirs.fex       = fullfile(dataRoot, 'features');
 %% Results
 dirs.stats     = fullfile(dataRoot, 'results', 'stats');
 dirs.figures   = fullfile(dataRoot, 'results', 'figures');
+dirs.logs      = fullfile(dataRoot, 'logs');
 
 %% Create missing directories
 fields = fieldnames(dirs);

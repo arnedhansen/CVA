@@ -11,7 +11,7 @@ dirs = CVA_paths();
 
 %% Load CSV
 demoFile = resolve_demo_file(dirs);
-demo = readtable(demoFile, 'Delimiter', ',');
+demo = readtable(demoFile, 'Delimiter', ',', 'VariableNamingRule', 'preserve');
 rawNames = demo.Properties.VariableNames;
 normNames = lower(regexprep(rawNames, '[^a-zA-Z0-9]', ''));
 
@@ -65,6 +65,11 @@ demo_out = demo_out(~isnan(demo_out.age_mid), :);
 outFile  = fullfile(dirs.fex, 'CVA_demographics.mat');
 save(outFile, 'demo_out');
 fprintf('Saved demographics for %d subjects.\n', height(demo_out));
+CVA_log_event('demographics', 'summary', struct( ...
+    'n_rows_raw', height(demo), ...
+    'n_rows_saved', height(demo_out), ...
+    'n_rows_dropped_missing_age', height(demo) - height(demo_out), ...
+    'source_file', demoFile));
 
 function demoFile = resolve_demo_file(dirs)
 candidates = {

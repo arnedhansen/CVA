@@ -64,6 +64,10 @@ end
 if missingXmlCount > 0
     warning('No CAT12 reports found for %d/%d subjects.', missingXmlCount, numel(subjects));
 end
+CVA_log_event('cat12_qc', 'xml_presence_summary', struct( ...
+    'n_subjects', numel(subjects), ...
+    'n_xml_missing', missingXmlCount, ...
+    'n_xml_found', height(qc_out)));
 
 %% Flag poor quality
 threshold        = 3.5;
@@ -75,6 +79,10 @@ fprintf('Total processed:  %d\n', height(qc_out));
 fprintf('Flagged (IQR>%.1f): %d\n', threshold, sum(qc_out.exclude));
 fprintf('\nFlagged subjects:\n');
 disp(qc_out(qc_out.exclude, :));
+CVA_log_event('cat12_qc', 'qc_summary', struct( ...
+    'n_processed', height(qc_out), ...
+    'iqr_threshold', threshold, ...
+    'n_flagged', sum(qc_out.exclude)));
 
 %% Save
 outFile = fullfile(dirs.fex, 'CVA_cat12_qc.mat');

@@ -24,6 +24,12 @@ end
 posteriorChans = {'O1','O2','Oz','PO3','PO4','PO7','PO8'};
 
 alpha_out = table();
+summary = struct();
+summary.total_subjects = numel(subjects);
+summary.missing_input = 0;
+summary.excluded_iaf_boundary = 0;
+summary.failed = 0;
+summary.saved = 0;
 
 for s = 1:numel(subjects)
     subID = subjects{s};
@@ -32,6 +38,7 @@ for s = 1:numel(subjects)
     inFile = fullfile(dirs.eeg_proc, [subID '_EC_clean.mat']);
     if ~exist(inFile, 'file')
         warning('Preprocessed file missing: %s', subID);
+        summary.missing_input = summary.missing_input + 1;
         continue;
     end
 
@@ -56,6 +63,10 @@ for s = 1:numel(subjects)
         % Exclude if peak at boundary
         if idx == 1 || idx == sum(iafBand)
             warning('IAF at boundary for %s — excluding.', subID);
+            summary.excluded_iaf_boundary = summary.excluded_iaf_boundary + 1;
+            CVA_log_event('alpha_fex', 'subject_excluded', struct( ...
+                'subID', subID, ...
+                'reason', 'iaf_at_band_boundary'));
             continue;
         end
 
@@ -69,9 +80,18 @@ for s = 1:numel(subjects)
         row        = table({subID}, iaf, alphaPower, ...
                            'VariableNames', {'subID','IAF','alpha_power'});
         alpha_out  = [alpha_out; row]; %#ok<AGROW>
+        summary.saved = summary.saved + 1;
+        CVA_log_event('alpha_fex', 'subject_processed', struct( ...
+            'subID', subID, ...
+            'iaf_hz', iaf, ...
+            'alpha_power', alphaPower));
 
     catch ME
         warning('Failed for %s: %s', subID, ME.message);
+        summary.failed = summary.failed + 1;
+        CVA_log_event('alpha_fex', 'subject_failed', struct( ...
+            'subID', subID, ...
+            'error', ME.message));
     end
 end
 
@@ -79,3 +99,5 @@ end
 outFile = fullfile(dirs.fex, 'CVA_alpha_power.mat');
 save(outFile, 'alpha_out');
 fprintf('Saved alpha power for %d subjects to %s\n', height(alpha_out), outFile);
+summary.output_rows = height(alpha_out);
+CVA_log_event('alpha_fex', 'run_summary', summary);

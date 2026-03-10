@@ -28,10 +28,12 @@ for s = 1:numel(subjects)
 
     %% Move tissue maps: p0, p1, p2, p3, p4, p5, p6 + bias-corrected (m*)
     prefixes = {'p0','p1','p2','p3','p4','p5','p6','m'};
+    movedMRI = 0;
     for p = 1:numel(prefixes)
         pattern = fullfile(srcDir, [prefixes{p} stem '.nii']);
         if exist(pattern, 'file')
             movefile(pattern, fullfile(destMRI, [prefixes{p} stem '.nii']));
+            movedMRI = movedMRI + 1;
         end
     end
 
@@ -40,15 +42,23 @@ for s = 1:numel(subjects)
         fullfile(srcDir, 'report', ['cat_' stem '.xml'])
         fullfile(srcDir, 'report', ['cat_' stem '.pdf'])
         };
+    movedReport = 0;
     for r = 1:numel(reportPatterns)
         if exist(reportPatterns{r}, 'file')
             [~, fn, ext] = fileparts(reportPatterns{r});
             movefile(reportPatterns{r}, fullfile(destReport, [fn ext]));
+            movedReport = movedReport + 1;
         end
     end
 
     fprintf('[Moved outputs] %s\n', subID);
+    CVA_log_event('cat12_move_outputs', 'subject_moved', struct( ...
+        'subID', subID, ...
+        'n_mri_files_moved', movedMRI, ...
+        'n_report_files_moved', movedReport));
 end
 
 fprintf('Output reorganisation complete.\n');
+CVA_log_event('cat12_move_outputs', 'run_summary', struct( ...
+    'n_subjects', numel(subjects)));
 end

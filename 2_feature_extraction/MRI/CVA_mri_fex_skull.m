@@ -31,6 +31,11 @@ roi_mni.Y = [-120 -60];   % mm anterior-posterior (negative = posterior)
 roi_mni.Z = [-20   80];   % mm inferior-superior
 
 skull_out = table();
+summary = struct();
+summary.total_subjects = numel(subjects);
+summary.missing_bone_map = 0;
+summary.failed = 0;
+summary.saved = 0;
 
 for s = 1:numel(subjects)
     subID = subjects{s};
@@ -45,6 +50,7 @@ for s = 1:numel(subjects)
     boneCandidates = dir(fullfile(mriDir, 'p4*.nii'));
     if isempty(boneCandidates)
         warning('Bone map not found for %s — skipping.', subID);
+        summary.missing_bone_map = summary.missing_bone_map + 1;
         continue;
     end
     boneFile = fullfile(mriDir, boneCandidates(1).name);
@@ -109,9 +115,18 @@ for s = 1:numel(subjects)
         row       = table({subID}, skullThickMM, ...
                           'VariableNames', {'subID','skull_thickness_mm'});
         skull_out = [skull_out; row]; %#ok<AGROW>
+        summary.saved = summary.saved + 1;
+        CVA_log_event('mri_skull_fex', 'subject_processed', struct( ...
+            'subID', subID, ...
+            'skull_thickness_mm', skullThickMM, ...
+            'n_valid_roi_columns', sum(validCols(:))));
 
     catch ME
         warning('Failed for %s: %s', subID, ME.message);
+        summary.failed = summary.failed + 1;
+        CVA_log_event('mri_skull_fex', 'subject_failed', struct( ...
+            'subID', subID, ...
+            'error', ME.message));
     end
 end
 
@@ -119,3 +134,5 @@ end
 outFile = fullfile(dirs.fex, 'CVA_skull_thickness.mat');
 save(outFile, 'skull_out');
 fprintf('Saved skull thickness for %d subjects to %s\n', height(skull_out), outFile);
+summary.output_rows = height(skull_out);
+CVA_log_event('mri_skull_fex', 'run_summary', summary);

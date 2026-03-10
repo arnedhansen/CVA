@@ -15,6 +15,12 @@
 CVA_init_toolboxes();
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
+summary = struct();
+summary.total_subjects = numel(subjects);
+summary.already_processed = 0;
+summary.missing_nifti = 0;
+summary.decompressed = 0;
+summary.queued = 0;
 
 % Verify SPM + CAT12 are available
 if ~exist('spm', 'file')
@@ -30,6 +36,7 @@ end
 
 spm('defaults', 'fmri');
 spm_jobman('initcfg');
+assert_spm_mex_compiled();
 
 %% Collect NIfTI files (decompress .nii.gz if needed)
 nii_files = {};
@@ -46,6 +53,7 @@ for s = 1:numel(subjects)
                         ['cat_' subID '_ses-01_acq-mp2rage_brain.xml']);
     if exist(xmlCheck, 'file')
         fprintf('[SKIP - already processed] %s\n', subID);
+        summary.already_processed = summary.already_processed + 1;
         continue;
     end
 
@@ -54,21 +62,33 @@ for s = 1:numel(subjects)
         if exist(niiGz, 'file')
             fprintf('[Decompressing] %s\n', subID);
             gunzip(niiGz, fileparts(niiGz));
+            summary.decompressed = summary.decompressed + 1;
         else
             warning('[MISSING] NIfTI not found for %s', subID);
+            summary.missing_nifti = summary.missing_nifti + 1;
+            CVA_log_event('cat12_batch', 'subject_skip_missing_nifti', struct( ...
+                'subID', subID, ...
+                'expected_nii_gz', niiGz));
             continue;
         end
     end
 
     nii_files{end+1} = [niiOut ',1']; %#ok<AGROW>
     valid_subs{end+1} = subID;        %#ok<AGROW>
+    summary.queued = summary.queued + 1;
 end
 
 if isempty(nii_files)
     fprintf('No subjects to process.\n');
+    CVA_log_event('cat12_batch', 'run_summary', summary);
     return;
 end
 fprintf('\nQueued %d subjects for CAT12 segmentation.\n', numel(nii_files));
+CVA_log_event('cat12_batch', 'run_queued', struct( ...
+    'n_queued', numel(nii_files), ...
+    'n_already_processed', summary.already_processed, ...
+    'n_missing_nifti', summary.missing_nifti, ...
+    'n_decompressed', summary.decompressed));
 
 %% Build matlabbatch
 matlabbatch = CVA_cat12_build_batch(nii_files, dirs);
@@ -76,9 +96,12 @@ matlabbatch = CVA_cat12_build_batch(nii_files, dirs);
 %% Run
 spm_jobman('run', matlabbatch);
 fprintf('\nCAT12 segmentation complete.\n');
+CVA_log_event('cat12_batch', 'segmentation_complete', struct('n_processed', numel(nii_files)));
 
 %% Move outputs to per-subject derivative folders
 CVA_cat12_move_outputs(valid_subs, nii_files, dirs);
+summary.moved_outputs = numel(valid_subs);
+CVA_log_event('cat12_batch', 'run_summary', summary);
 
 function add_spm12_if_available(dirs)
 envCandidates = {getenv('SPM12_DIR'), getenv('SPM_DIR')};
@@ -133,5 +156,40 @@ for i = 1:numel(candidates)
         end
         return;
     end
+end
+end
+
+function assert_spm_mex_compiled()
+% CAT12 segmentation requires compiled SPM MEX functions on this platform.
+% Without these binaries, segmentation fails at runtime in spm_slice_vol.
+spmDir = spm('dir');
+mexBin = mexext;
+
+required = {'spm_slice_vol'};
+missing = {};
+
+for i = 1:numel(required)
+    mexPath = fullfile(spmDir, [required{i} '.' mexBin]);
+    if ~exist(mexPath, 'file')
+        fallback = dir(fullfile(spmDir, [required{i} '.mex*']));
+        if isempty(fallback)
+            missing{end+1} = required{i}; %#ok<AGROW>
+        end
+    end
+end
+
+if ~isempty(missing)
+    msg = sprintf([ ...
+        'SPM is present but required compiled binaries are missing for this platform.\n' ...
+        'Missing: %s\n' ...
+        'Expected extension: .%s\n' ...
+        'SPM path: %s\n' ...
+        'Compile SPM MEX files (e.g., run spm_make in MATLAB with a working compiler) and rerun CAT12.'], ...
+        strjoin(missing, ', '), mexBin, spmDir);
+    CVA_log_event('cat12_batch', 'spm_mex_missing', struct( ...
+        'spm_dir', spmDir, ...
+        'mexext', mexBin, ...
+        'missing_functions', {missing}));
+    error('CVA:MissingSpmMex', '%s', msg);
 end
 end
