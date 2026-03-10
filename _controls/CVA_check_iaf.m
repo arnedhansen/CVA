@@ -8,7 +8,7 @@ dirs = CVA_paths();
 load(fullfile(dirs.fex, 'CVA_alpha_power.mat'), 'alpha_out');
 
 %% IAF distribution
-figure('Name','IAF Distribution');
+figure('Position', [0 0 1512 982], 'Name','IAF Distribution');
 histogram(alpha_out.IAF, 20, 'FaceColor', [0.2 0.5 0.8]);
 xlabel('Individual Alpha Frequency (Hz)');
 ylabel('N subjects');

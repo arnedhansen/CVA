@@ -35,9 +35,21 @@ for s = 1:numel(subjects)
         %% Parse CAT12 XML
         S = cat_io_xml(xmlFile);   % CAT12 helper function
 
-        gm  = S.subjectmeasures.vol_abs_CGW(3);   % gray matter
-        wm  = S.subjectmeasures.vol_abs_CGW(2);   % white matter
-        csf = S.subjectmeasures.vol_abs_CGW(1);   % CSF
+        if ~isfield(S, 'subjectmeasures') || ~isfield(S.subjectmeasures, 'vol_abs_CGW')
+            warning('Missing vol_abs_CGW in CAT12 XML for %s', subID);
+            continue;
+        end
+
+        cgw = S.subjectmeasures.vol_abs_CGW;
+        if numel(cgw) < 3
+            warning('Unexpected vol_abs_CGW format for %s', subID);
+            continue;
+        end
+
+        % CAT12 order in vol_abs_CGW is [CSF, GM, WM].
+        csf = cgw(1);
+        gm  = cgw(2);
+        wm  = cgw(3);
         tbv = gm + wm;
 
         %% Append

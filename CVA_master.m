@@ -14,24 +14,25 @@
 %
 %   Preprocessing:
 %       1_preprocessing/CVA_preprocessing_eeg.m
-%       1_preprocessing/CVA_preprocessing_mri.m
+%       1_preprocessing/CVA_cat12_batch_config.m
 %
 %   Controls:
 %       _controls/CVA_missing_data.m
+%       _controls/CVA_cat12_qc.m
 %       _controls/CVA_check_iaf.m
 %
 %   Feature Extraction:
-%       2_feature_extraction/eeg/CVA_eeg_fex_alpha.m
-%       2_feature_extraction/eeg/CVA_eeg_fex_gfp.m
-%       2_feature_extraction/mri/CVA_mri_fex_csf.m
-%       2_feature_extraction/mri/CVA_mri_fex_skull.m
+%       2_feature_extraction/EEG/CVA_eeg_fex_alpha.m
+%       2_feature_extraction/EEG/CVA_eeg_fex_gfp.m
+%       2_feature_extraction/MRI/CVA_mri_fex_csf.m
+%       2_feature_extraction/MRI/CVA_mri_fex_skull.m
 %       2_feature_extraction/CVA_demographics.m
 %       2_feature_extraction/CVA_master_matrix.m
 %
 %   Visualizations:
-%       3_visualization/eeg/CVA_eeg_powspctrm.m
-%       3_visualization/eeg/CVA_eeg_topos.m
-%       3_visualization/mri/CVA_mri_csf_distribution.m
+%       3_visualization/EEG/CVA_eeg_powspctrm.m
+%       3_visualization/EEG/CVA_eeg_topos.m
+%       3_visualization/MRI/CVA_mri_csf_distribution.m
 %       3_visualization/CVA_scatter_csf_alpha.m
 %       3_visualization/CVA_scatter_csf_gfp.m
 %
@@ -41,17 +42,22 @@
 %       4_stats/CVA_lme_interaction.m
 
 %% Setup
-startup;
 clc;
 
-% Set base path depending on platform
-if ispc
-    basePath = 'C:\Users\dummy\Documents\GitHub\CVA';
-else
-    basePath = '/Users/Arne/Documents/GitHub/CVA';
+% Resolve project root from this file location (portable across machines).
+basePath = fileparts(mfilename('fullpath'));
+if isempty(basePath)
+    basePath = pwd;
 end
 
 addpath(genpath(basePath));
+
+% Optionally run user startup if available on MATLAB path.
+if exist('startup', 'file')
+    startup;
+    % startup may reset MATLAB paths; re-add project tree afterwards.
+    addpath(genpath(basePath));
+end
 
 %% Paths
 dirs = CVA_paths();
@@ -60,21 +66,22 @@ dirs = CVA_paths();
 scripts = {
     % Preprocessing
     '1_preprocessing/CVA_preprocessing_eeg.m'
-    '1_preprocessing/CVA_preprocessing_mri.m'
+    '1_preprocessing/CVA_cat12_batch_config.m'
     % Controls
     '_controls/CVA_missing_data.m'
-    '_controls/CVA_check_iaf.m'
+    '_controls/CVA_cat12_qc.m'
     % Feature Extraction
-    '2_feature_extraction/eeg/CVA_eeg_fex_alpha.m'
-    '2_feature_extraction/eeg/CVA_eeg_fex_gfp.m'
-    '2_feature_extraction/mri/CVA_mri_fex_csf.m'
-    '2_feature_extraction/mri/CVA_mri_fex_skull.m'
+    '2_feature_extraction/EEG/CVA_eeg_fex_alpha.m'
+    '_controls/CVA_check_iaf.m'
+    '2_feature_extraction/EEG/CVA_eeg_fex_gfp.m'
+    '2_feature_extraction/MRI/CVA_mri_fex_csf.m'
+    '2_feature_extraction/MRI/CVA_mri_fex_skull.m'
     '2_feature_extraction/CVA_demographics.m'
     '2_feature_extraction/CVA_master_matrix.m'
     % Visualization
-    '3_visualization/eeg/CVA_eeg_powspctrm.m'
-    '3_visualization/eeg/CVA_eeg_topos.m'
-    '3_visualization/mri/CVA_mri_csf_distribution.m'
+    '3_visualization/EEG/CVA_eeg_powspctrm.m'
+    '3_visualization/EEG/CVA_eeg_topos.m'
+    '3_visualization/MRI/CVA_mri_csf_distribution.m'
     '3_visualization/CVA_scatter_csf_alpha.m'
     '3_visualization/CVA_scatter_csf_gfp.m'
     % Stats
@@ -87,8 +94,19 @@ results = struct();
 for i = 1:numel(scripts)
     scriptName = scripts{i};
     fprintf('\n[%d/%d] Running: %s\n', i, numel(scripts), scriptName);
+    scriptPath = fullfile(basePath, scriptName);
+
+    % Do not fail full pipeline if optional scripts are absent.
+    if ~exist(scriptPath, 'file')
+        results(i).script = scriptName;
+        results(i).status = 'SKIPPED';
+        results(i).error  = 'File not found';
+        warning('Script skipped (missing): %s', scriptName);
+        continue;
+    end
+
     try
-        run(fullfile(basePath, scriptName));
+        run(scriptPath);
         results(i).script = scriptName;
         results(i).status = 'OK';
     catch ME

@@ -30,10 +30,31 @@ for s = 1:numel(subjects)
     try
         S = cat_io_xml(xmlFile);
 
-        iqr      = S.qualityratings.IQR;          % numeric score
-        iqrGrade = S.qualityratings.IQRp100rms;   % letter grade string
-        ncr      = S.qualityratings.NCR;          % noise-to-contrast ratio
-        icv      = S.subjectmeasures.vol_TIV;     % total intracranial volume (ml)
+        if ~isfield(S, 'qualityratings')
+            warning('No qualityratings field in CAT12 XML for %s', subID);
+            continue;
+        end
+        if ~isfield(S, 'subjectmeasures')
+            warning('No subjectmeasures field in CAT12 XML for %s', subID);
+            continue;
+        end
+
+        iqr = S.qualityratings.IQR;
+        if isfield(S.qualityratings, 'IQRp100rms')
+            iqrGrade = S.qualityratings.IQRp100rms;
+        else
+            iqrGrade = 'NA';
+        end
+        if isfield(S.qualityratings, 'NCR')
+            ncr = S.qualityratings.NCR;
+        else
+            ncr = NaN;
+        end
+        if isfield(S.subjectmeasures, 'vol_TIV')
+            icv = S.subjectmeasures.vol_TIV;
+        else
+            icv = NaN;
+        end
 
         row    = table({subID}, iqr, {iqrGrade}, ncr, icv, ...
                        'VariableNames', {'subID','IQR','IQR_grade','NCR','TIV_ml'});

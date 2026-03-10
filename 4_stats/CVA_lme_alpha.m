@@ -35,7 +35,7 @@ outFile = fullfile(dirs.stats, 'CVA_lme_alpha.mat');
 save(outFile, 'mdl');
 
 %% Plot: CSF vs alpha (partial residuals)
-figure('Name','CSF vs Alpha Power');
+figure('Position', [0 0 1512 982], 'Name','CSF vs Alpha Power');
 plotAdded(mdl, 'CSF_z');
 xlabel('CSF Volume (z-scored)');
 ylabel('Alpha Power (z-scored, partial)');

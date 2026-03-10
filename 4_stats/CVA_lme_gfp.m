@@ -30,7 +30,7 @@ fprintf('R² = %.3f,  Adjusted R² = %.3f\n', mdl.Rsquared.Ordinary, mdl.Rsquare
 outFile = fullfile(dirs.stats, 'CVA_lme_gfp.mat');
 save(outFile, 'mdl');
 
-figure('Name','CSF vs GFP');
+figure('Position', [0 0 1512 982], 'Name','CSF vs GFP');
 plotAdded(mdl, 'CSF_z');
 xlabel('CSF Volume (z-scored)');
 ylabel('GFP Alpha (z-scored, partial)');

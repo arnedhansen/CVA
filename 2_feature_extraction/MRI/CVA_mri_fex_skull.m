@@ -41,13 +41,13 @@ for s = 1:numel(subjects)
     %   p5 = soft tissue (not needed but useful for sanity check)
     % NOTE: CAT12 writes TPMC outputs with prefix 'p4_' when TPMC is
     % enabled. Adjust filename pattern if your CAT12 version differs.
-    boneFile = fullfile(dirs.mri_proc, subID, 'mri', ...
-                        ['p4' subID '_ses-01_acq-mp2rage_brain.nii']);
-
-    if ~exist(boneFile, 'file')
+    mriDir = fullfile(dirs.mri_proc, subID, 'mri');
+    boneCandidates = dir(fullfile(mriDir, 'p4*.nii'));
+    if isempty(boneCandidates)
         warning('Bone map not found for %s — skipping.', subID);
         continue;
     end
+    boneFile = fullfile(mriDir, boneCandidates(1).name);
 
     try
         %% Load bone probability map
@@ -84,7 +84,8 @@ for s = 1:numel(subjects)
         % count consecutive skull voxels along Y (anterior-posterior axis).
         % This gives a radial depth estimate through the bone at each
         % scalp location over the posterior ROI.
-        voxSize_mm  = abs(V.mat(1,1));   % isotropic 1 mm for MP2RAGE
+        voxSize_xyz = sqrt(sum(V.mat(1:3,1:3).^2, 1));
+        voxSize_mm  = mean(voxSize_xyz);
         nX          = size(roiMask, 1);
         nZ          = size(roiMask, 3);
         colThickness = zeros(nX, nZ);

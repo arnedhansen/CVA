@@ -33,7 +33,7 @@ disp(mdl_gfp);
 save(fullfile(dirs.stats, 'CVA_lme_interaction.mat'), 'mdl_alpha', 'mdl_gfp');
 
 %% Plot interaction
-figure('Name', 'CSF x Age Interaction - Alpha');
+figure('Position', [0 0 1512 982], 'Name', 'CSF x Age Interaction - Alpha');
 groups = {'young','old'};
 colors = {[0.2 0.5 0.8], [0.9 0.4 0.2]};
 hold on;
