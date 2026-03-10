@@ -1,3 +1,4 @@
+function CVA_master
 %% CVA Master Analysis Script
 %
 % Executes all MATLAB-based analysis steps for the CVA study.
@@ -45,18 +46,17 @@
 clc;
 
 % Resolve project root from this file location (portable across machines).
-basePath = fileparts(mfilename('fullpath'));
-if isempty(basePath)
-    basePath = pwd;
-end
-
-addpath(genpath(basePath));
+projectRoot = resolve_project_root();
+addpath(genpath(projectRoot));
 
 % Optionally run user startup if available on MATLAB path.
 if exist('startup', 'file')
-    startup;
+    % Run startup in base workspace so any clear/reset remains isolated
+    % from the master function workspace.
+    evalin('base', 'startup;');
     % startup may reset MATLAB paths; re-add project tree afterwards.
-    addpath(genpath(basePath));
+    projectRoot = resolve_project_root();
+    addpath(genpath(projectRoot));
 end
 
 %% Paths
@@ -94,7 +94,9 @@ results = struct();
 for i = 1:numel(scripts)
     scriptName = scripts{i};
     fprintf('\n[%d/%d] Running: %s\n', i, numel(scripts), scriptName);
-    scriptPath = fullfile(basePath, scriptName);
+    projectRoot = resolve_project_root();
+    addpath(genpath(projectRoot));
+    scriptPath = fullfile(projectRoot, scriptName);
 
     % Do not fail full pipeline if optional scripts are absent.
     if ~exist(scriptPath, 'file')
@@ -106,7 +108,8 @@ for i = 1:numel(scripts)
     end
 
     try
-        run(scriptPath);
+        scriptPathEscaped = strrep(scriptPath, '''', '''''');
+        evalin('base', sprintf('run(''%s'');', scriptPathEscaped));
         results(i).script = scriptName;
         results(i).status = 'OK';
     catch ME
@@ -126,3 +129,12 @@ for i = 1:numel(results)
     end
 end
 fprintf('=====================================\n');
+
+end
+
+function rootPath = resolve_project_root()
+rootPath = fileparts(mfilename('fullpath'));
+if isempty(rootPath)
+    rootPath = pwd;
+end
+end
