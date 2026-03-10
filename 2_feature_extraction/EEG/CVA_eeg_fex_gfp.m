@@ -10,6 +10,7 @@
 
 %% Setup
 startup;
+setup;
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
 

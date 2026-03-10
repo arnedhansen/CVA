@@ -4,6 +4,7 @@
 % Alpha band is defined per subject as [IAF-4, IAF+2], then averaged.
 
 startup;
+setup;
 dirs = CVA_paths();
 
 alphaFile = fullfile(dirs.fex, 'CVA_alpha_power.mat');
