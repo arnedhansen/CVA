@@ -10,6 +10,8 @@
 % Output: dirs.mri_proc / CAT12 derivatives per subject
 
 %% Setup
+startup
+setup('CVA')
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
 

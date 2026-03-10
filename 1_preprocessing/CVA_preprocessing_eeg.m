@@ -8,6 +8,8 @@
 % Output: dirs.eeg_proc / sub-XXXXXX_EC_clean.mat
 
 %% Setup
+startup
+setup('CVA')
 if exist('CVA_paths', 'file') ~= 2
     error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
            'and rerun this script.']);
