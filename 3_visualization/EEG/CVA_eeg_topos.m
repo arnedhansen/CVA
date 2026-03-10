@@ -3,6 +3,7 @@
 % Computes and plots a group-level posterior alpha topography.
 % Alpha band is defined per subject as [IAF-4, IAF+2], then averaged.
 
+startup;
 dirs = CVA_paths();
 
 alphaFile = fullfile(dirs.fex, 'CVA_alpha_power.mat');

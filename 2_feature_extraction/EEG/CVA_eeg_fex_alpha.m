@@ -11,6 +11,7 @@
 %   alpha_out: table with columns [subID, IAF, alpha_power]
 
 %% Setup
+startup;
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
 

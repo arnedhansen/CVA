@@ -9,6 +9,7 @@
 %   gfp_out: table with columns [subID, gfp_mean, gfp_alpha]
 
 %% Setup
+startup;
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
 

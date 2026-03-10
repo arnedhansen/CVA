@@ -8,6 +8,7 @@
 % Output: dirs.eeg_proc / sub-XXXXXX_EC_clean.mat
 
 %% Setup
+startup;
 dirs = CVA_paths();
 subjects = CVA_get_subjects();
 
