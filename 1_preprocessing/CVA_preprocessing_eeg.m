@@ -34,17 +34,38 @@ for s = 1:numel(subjects)
         data           = ft_preprocessing(cfg, data);
 
         %% Epoch into 2s segments
-        cfg         = [];
-        cfg.length  = 2;
+        cfg        = [];
+        cfg.length = 2;
         cfg.overlap = 0;
-        data        = ft_redefinetrial(cfg, data);
+        data       = ft_redefinetrial(cfg, data);
 
         %% Reject noisy epochs (peak-to-peak > 90 µV)
-        cfg                        = [];
-        cfg.artfctdef.zvalue.channel   = 'all';
-        cfg.artfctdef.reject           = 'complete';
-        cfg.artfctdef.crittoilim       = data.time{1}([1 end]);
-        % TODO: add ft_rejectartifact call
+        % Step 1: detect artefact windows using ft_artifact_threshold
+        cfg                                = [];
+        cfg.continuous                     = 'no';       % data already epoched
+        cfg.artfctdef.threshold.channel    = 'all';
+        cfg.artfctdef.threshold.bpfilter   = 'no';       % no filter — raw amplitude
+        cfg.artfctdef.threshold.range      = 90e-6;      % peak-to-peak threshold (V)
+        [cfg, ~]                           = ft_artifact_threshold(cfg, data);
+
+        % Step 2: reject epochs containing artefact windows
+        cfg.artfctdef.reject               = 'complete'; % discard entire epoch
+        cfg.artfctdef.crittoilim           = data.time{1}([1 end]);
+        data                               = ft_rejectartifact(cfg, data);
+
+        % Log how many epochs survived
+        nEpochsBefore = numel(data.trial) + size(cfg.artfctdef.threshold.artifact, 1);
+        nEpochsAfter  = numel(data.trial);
+        nRejected     = nEpochsBefore - nEpochsAfter;
+        fprintf('  Epochs: %d retained, %d rejected (%.0f%%)\n', ...
+            nEpochsAfter, nRejected, 100 * nRejected / nEpochsBefore);
+
+        % Exclude subject if fewer than 30 clean epochs remain
+        if nEpochsAfter < 30
+            warning('  Only %d epochs remain for %s — excluding subject.', ...
+                nEpochsAfter, subID);
+            continue;
+        end
 
         %% Save
         outFile = fullfile(dirs.eeg_proc, [subID '_EC_clean.mat']);
