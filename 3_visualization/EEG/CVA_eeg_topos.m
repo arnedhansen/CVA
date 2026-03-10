@@ -3,7 +3,10 @@
 % Computes and plots a group-level posterior alpha topography.
 % Alpha band is defined per subject as [IAF-4, IAF+2], then averaged.
 
-CVA_init_toolboxes();
+if exist('CVA_paths', 'file') ~= 2
+    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
+           'and rerun this script.']);
+end
 dirs = CVA_paths();
 
 if ~exist('ft_topoplotER', 'file') || ~exist('ft_freqanalysis', 'file')

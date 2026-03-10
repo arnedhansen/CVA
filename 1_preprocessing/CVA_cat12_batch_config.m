@@ -12,7 +12,10 @@
 % are skipped automatically via the check at the top of the loop.
 
 %% Setup
-CVA_init_toolboxes();
+if exist('CVA_paths', 'file') ~= 2
+    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
+           'and rerun this script.']);
+end
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
 summary = struct();

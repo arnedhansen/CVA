@@ -11,7 +11,10 @@
 %   alpha_out: table with columns [subID, IAF, alpha_power]
 
 %% Setup
-CVA_init_toolboxes();
+if exist('CVA_paths', 'file') ~= 2
+    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
+           'and rerun this script.']);
+end
 dirs     = CVA_paths();
 subjects = CVA_get_subjects();
 

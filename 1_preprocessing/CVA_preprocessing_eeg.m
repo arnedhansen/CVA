@@ -8,7 +8,10 @@
 % Output: dirs.eeg_proc / sub-XXXXXX_EC_clean.mat
 
 %% Setup
-CVA_init_toolboxes();
+if exist('CVA_paths', 'file') ~= 2
+    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
+           'and rerun this script.']);
+end
 dirs = CVA_paths();
 subjects = CVA_get_subjects();
 
