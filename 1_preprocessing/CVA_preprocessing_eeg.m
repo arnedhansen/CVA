@@ -4,18 +4,12 @@
 % any additional study-specific steps (epoch rejection, average reference).
 % Saves cleaned data to derivatives/EEG/.
 %
-% Input:  dirs.eeg_raw  / sub-XXXXXX_EC.set
-% Output: dirs.eeg_proc / sub-XXXXXX_EC_clean.mat
+% Input:  paths.eeg_raw  / sub-XXXXXX_EC.set
+% Output: paths.eeg_proc / sub-XXXXXX_EC_clean.mat
 
 %% Setup
 startup
-setup('CVA')
-if exist('CVA_paths', 'file') ~= 2
-    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
-           'and rerun this script.']);
-end
-dirs = CVA_paths();
-subjects = CVA_get_subjects();
+[subjects, paths, ~, ~] = setup('CVA');
 
 if ~exist('ft_preprocessing', 'file')
     error(['FieldTrip function ft_preprocessing not found on path. ', ...
@@ -39,7 +33,7 @@ for s = 1:numel(subjects)
     clc
     fprintf('[EEG Preprocessing] %s (%d/%d)\n', subID, s, numel(subjects));
 
-    inFile = fullfile(dirs.eeg_raw, subID, [subID '_EC.set']);
+    inFile = fullfile(paths.eeg_raw, subID, [subID '_EC.set']);
     if ~exist(inFile, 'file')
         warning('File not found, skipping: %s', inFile);
         summary.missing_input = summary.missing_input + 1;
@@ -181,7 +175,7 @@ for s = 1:numel(subjects)
         end
 
         %% Save
-        outFile = fullfile(dirs.eeg_proc, [subID '_EC_clean.mat']);
+        outFile = fullfile(paths.eeg_proc, [subID '_EC_clean.mat']);
         save(outFile, 'data', '-v7.3');
         summary.saved = summary.saved + 1;
         CVA_log_event('eeg_preprocessing', 'subject_processed', struct( ...

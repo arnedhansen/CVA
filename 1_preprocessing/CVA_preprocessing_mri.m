@@ -6,21 +6,19 @@
 %
 % Requires: SPM12 + CAT12 toolbox on MATLAB path
 %
-% Input:  dirs.mri_raw  / sub-XXXXXX / sub-XXXXXX_ses-01_acq-mp2rage_brain.nii.gz
-% Output: dirs.mri_proc / CAT12 derivatives per subject
+% Input:  paths.mri_raw  / sub-XXXXXX / sub-XXXXXX_ses-01_acq-mp2rage_brain.nii.gz
+% Output: paths.mri_proc / CAT12 derivatives per subject
 
 %% Setup
 startup
-setup('CVA')
-dirs     = CVA_paths();
-subjects = CVA_get_subjects();
+[subjects, paths, ~, ~] = setup('CVA');
 
 %% Batch CAT12 segmentation
 % Collect all NIfTI files
 nii_files = {};
 for s = 1:numel(subjects)
     subID   = subjects{s};
-    niiGz   = fullfile(dirs.mri_raw, subID, 'anat', ...
+    niiGz   = fullfile(paths.mri_raw, subID, 'anat', ...
                        [subID '_ses-01_acq-mp2rage_brain.nii.gz']);
     niiFile = strrep(niiGz, '.nii.gz', '.nii');
 

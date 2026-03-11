@@ -7,8 +7,10 @@
 %   gfp_alpha ~ CSF + skull_thickness + sex
 
 %% Setup
-dirs = CVA_paths();
-load(fullfile(dirs.fex, 'CVA_master_matrix.mat'), 'master');
+startup
+[~, paths, ~, ~] = setup('CVA');
+
+load(fullfile(paths.fex, 'CVA_master_matrix.mat'), 'master');
 inputN = height(master);
 
 %% Restrict to young participants for stage 1
@@ -62,7 +64,7 @@ disp(mdl);
 fprintf('R² = %.3f,  Adjusted R² = %.3f\n', mdl.Rsquared.Ordinary, mdl.Rsquared.Adjusted);
 
 %% Save
-outFile = fullfile(dirs.stats, 'CVA_lme_gfp_young.mat');
+outFile = fullfile(paths.stats, 'CVA_lme_gfp_young.mat');
 save(outFile, 'mdl');
 CVA_log_event('stats_gfp', 'model_saved', struct('path', outFile));
 
@@ -71,6 +73,6 @@ plotAdded(mdl, 'CSF_z');
 xlabel('CSF Volume (z-scored)');
 ylabel('GFP Alpha (z-scored, partial)');
 title('Young-only partial regression: CSF -> GFP');
-figPath = fullfile(dirs.figures, 'CVA_lme_gfp_young_partial.png');
+figPath = fullfile(paths.figures, 'CVA_lme_gfp_young_partial.png');
 saveas(gcf, figPath);
 CVA_log_event('stats_gfp', 'figure_saved', struct('path', figPath));

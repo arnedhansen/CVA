@@ -5,9 +5,11 @@
 %   - Posterior alpha power distribution
 %   - Alpha power by age group (if master matrix exists)
 
-dirs = CVA_paths();
+%% Setup
+startup
+[~, paths, ~, ~] = setup('CVA');
 
-alphaFile = fullfile(dirs.fex, 'CVA_alpha_power.mat');
+alphaFile = fullfile(paths.fex, 'CVA_alpha_power.mat');
 if ~exist(alphaFile, 'file')
     warning('Missing file: %s. Run CVA_eeg_fex_alpha first.', alphaFile);
     return;
@@ -36,7 +38,7 @@ ylabel('Count');
 title('Posterior alpha power distribution');
 grid on;
 
-masterFile = fullfile(dirs.fex, 'CVA_master_matrix.mat');
+masterFile = fullfile(paths.fex, 'CVA_master_matrix.mat');
 if exist(masterFile, 'file')
     load(masterFile, 'master');
     if ~isempty(master) && all(ismember({'age_group','alpha_power'}, master.Properties.VariableNames))
@@ -56,5 +58,5 @@ ylabel('Posterior alpha power (a.u.)');
 title('IAF vs alpha power');
 grid on;
 
-exportgraphics(fig, fullfile(dirs.figures, 'CVA_eeg_powspctrm.png'), 'Resolution', 300);
+exportgraphics(fig, fullfile(paths.figures, 'CVA_eeg_powspctrm.png'), 'Resolution', 300);
 close(fig);

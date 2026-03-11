@@ -7,8 +7,10 @@
 %   [alpha_z / gfp_z] ~ CSF_z * age_group + skull_z + sex_c
 
 %% Setup
-dirs = CVA_paths();
-load(fullfile(dirs.fex, 'CVA_master_matrix.mat'), 'master');
+startup
+[~, paths, ~, ~] = setup('CVA');
+
+load(fullfile(paths.fex, 'CVA_master_matrix.mat'), 'master');
 inputN = height(master);
 
 if isempty(master)
@@ -79,7 +81,7 @@ fprintf('\n========== Stage 2: CSF x Age Group -> GFP ==========\n');
 disp(mdl_gfp);
 
 %% Save
-outFile = fullfile(dirs.stats, 'CVA_lme_interaction.mat');
+outFile = fullfile(paths.stats, 'CVA_lme_interaction.mat');
 save(outFile, 'mdl_alpha', 'mdl_gfp');
 CVA_log_event('stats_interaction', 'models_saved', struct('path', outFile));
 
@@ -98,7 +100,7 @@ for g = 1:2
 end
 legend; xlabel('CSF Volume (z)'); ylabel('Alpha Power (z)');
 title('CSF × Age Group Interaction');
-figPath = fullfile(dirs.figures, 'CVA_interaction_alpha.png');
+figPath = fullfile(paths.figures, 'CVA_interaction_alpha.png');
 saveas(gcf, figPath);
 CVA_log_event('stats_interaction', 'figure_saved', struct('path', figPath));
 

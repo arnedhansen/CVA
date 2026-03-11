@@ -4,12 +4,14 @@
 % Run after CVA_eeg_fex_alpha.
 
 %% Setup
-dirs = CVA_paths();
-load(fullfile(dirs.fex, 'CVA_alpha_power.mat'), 'alpha_out');
+startup
+[~, paths, colors, ~] = setup('CVA');
+
+load(fullfile(paths.fex, 'CVA_alpha_power.mat'), 'alpha_out');
 
 %% IAF distribution
 figure('Position', [0 0 1512 982], 'Name','IAF Distribution');
-histogram(alpha_out.IAF, 20, 'FaceColor', [0.2 0.5 0.8]);
+histogram(alpha_out.IAF, 20, 'FaceColor', colors(1, :));
 xlabel('Individual Alpha Frequency (Hz)');
 ylabel('N subjects');
 title(sprintf('IAF Distribution (N=%d)', height(alpha_out)));
@@ -27,6 +29,6 @@ CVA_log_event('iaf_qc', 'distribution_summary', struct( ...
     'iaf_max', max(alpha_out.IAF)));
 
 %% Save figure
-outFigure = fullfile(dirs.figures, 'CVA_iaf_distribution.png');
+outFigure = fullfile(paths.figures, 'CVA_iaf_distribution.png');
 saveas(gcf, outFigure);
 CVA_log_event('iaf_qc', 'figure_saved', struct('path', outFigure));

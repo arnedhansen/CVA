@@ -10,8 +10,10 @@
 % young cohort prior to fitting.
 
 %% Setup
-dirs = CVA_paths();
-load(fullfile(dirs.fex, 'CVA_master_matrix.mat'), 'master');
+startup
+[~, paths, ~, ~] = setup('CVA');
+
+load(fullfile(paths.fex, 'CVA_master_matrix.mat'), 'master');
 inputN = height(master);
 
 %% Restrict to young participants for stage 1
@@ -65,7 +67,7 @@ disp(mdl);
 fprintf('R² = %.3f,  Adjusted R² = %.3f\n', mdl.Rsquared.Ordinary, mdl.Rsquared.Adjusted);
 
 %% Save
-outFile = fullfile(dirs.stats, 'CVA_lme_alpha_young.mat');
+outFile = fullfile(paths.stats, 'CVA_lme_alpha_young.mat');
 save(outFile, 'mdl');
 CVA_log_event('stats_alpha', 'model_saved', struct('path', outFile));
 
@@ -75,6 +77,6 @@ plotAdded(mdl, 'CSF_z');
 xlabel('CSF Volume (z-scored)');
 ylabel('Alpha Power (z-scored, partial)');
 title('Young-only partial regression: CSF -> Alpha Power');
-figPath = fullfile(dirs.figures, 'CVA_lme_alpha_young_partial.png');
+figPath = fullfile(paths.figures, 'CVA_lme_alpha_young_partial.png');
 saveas(gcf, figPath);
 CVA_log_event('stats_alpha', 'figure_saved', struct('path', figPath));

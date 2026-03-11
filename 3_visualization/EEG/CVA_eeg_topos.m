@@ -3,18 +3,16 @@
 % Computes and plots a group-level posterior alpha topography.
 % Alpha band is defined per subject as [IAF-4, IAF+2], then averaged.
 
-if exist('CVA_paths', 'file') ~= 2
-    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
-           'and rerun this script.']);
-end
-dirs = CVA_paths();
+%% Setup
+startup
+[~, paths, ~, ~] = setup('CVA');
 
 if ~exist('ft_topoplotER', 'file') || ~exist('ft_freqanalysis', 'file')
     error(['FieldTrip plotting/spectral functions not found on path. ', ...
            'Add FieldTrip and rerun.']);
 end
 
-alphaFile = fullfile(dirs.fex, 'CVA_alpha_power.mat');
+alphaFile = fullfile(paths.fex, 'CVA_alpha_power.mat');
 if ~exist(alphaFile, 'file')
     warning('Missing file: %s. Run CVA_eeg_fex_alpha first.', alphaFile);
     return;
@@ -31,7 +29,7 @@ labelRef = {};
 
 for s = 1:height(alpha_out)
     subID = alpha_out.subID{s};
-    inFile = fullfile(dirs.eeg_proc, [subID '_EC_clean.mat']);
+    inFile = fullfile(paths.eeg_proc, [subID '_EC_clean.mat']);
     if ~exist(inFile, 'file')
         continue;
     end
@@ -74,5 +72,5 @@ ft_topoplotER(cfg, tmp);
 title('Group alpha topography (IAF-relative band)');
 colorbar;
 
-exportgraphics(fig, fullfile(dirs.figures, 'CVA_eeg_topos.png'), 'Resolution', 300);
+exportgraphics(fig, fullfile(paths.figures, 'CVA_eeg_topos.png'), 'Resolution', 300);
 close(fig);

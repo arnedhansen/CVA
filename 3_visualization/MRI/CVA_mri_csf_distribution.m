@@ -2,8 +2,11 @@
 %
 % Visualizes distribution of MRI-derived volumetric measures.
 
-dirs = CVA_paths();
-inFile = fullfile(dirs.fex, 'CVA_mri_volumes.mat');
+%% Setup
+startup
+[~, paths, ~, ~] = setup('CVA');
+
+inFile = fullfile(paths.fex, 'CVA_mri_volumes.mat');
 if ~exist(inFile, 'file')
     warning('Missing file: %s. Run CVA_mri_fex_csf first.', inFile);
     return;
@@ -46,5 +49,5 @@ ylabel('Count');
 title('TBV');
 grid on;
 
-exportgraphics(fig, fullfile(dirs.figures, 'CVA_mri_csf_distribution.png'), 'Resolution', 300);
+exportgraphics(fig, fullfile(paths.figures, 'CVA_mri_csf_distribution.png'), 'Resolution', 300);
 close(fig);

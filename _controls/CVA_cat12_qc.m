@@ -9,11 +9,11 @@
 %   D (4-5)  = poor  → exclude
 %   E (5-6)  = very poor → exclude
 %
-% Output: table printed to console + saved to dirs.fex/CVA_cat12_qc.mat
+% Output: table printed to console + saved to paths.fex/CVA_cat12_qc.mat
 
 %% Setup
-dirs     = CVA_paths();
-subjects = CVA_get_subjects();
+startup
+[subjects, paths, ~, ~] = setup('CVA');
 
 qc_out = table();
 qc_out = table('Size', [0 5], ...
@@ -23,7 +23,7 @@ missingXmlCount = 0;
 
 for s = 1:numel(subjects)
     subID   = subjects{s};
-    xmlFile = fullfile(dirs.mri_proc, subID, 'report', ...
+    xmlFile = fullfile(paths.mri_proc, subID, 'report', ...
                        ['cat_' subID '_ses-01_acq-mp2rage_brain.xml']);
 
     if ~exist(xmlFile, 'file')
@@ -85,9 +85,9 @@ CVA_log_event('cat12_qc', 'qc_summary', struct( ...
     'n_flagged', sum(qc_out.exclude)));
 
 %% Save
-outFile = fullfile(dirs.fex, 'CVA_cat12_qc.mat');
+outFile = fullfile(paths.fex, 'CVA_cat12_qc.mat');
 save(outFile, 'qc_out');
-writetable(qc_out, fullfile(dirs.fex, 'CVA_cat12_qc.csv'));
+writetable(qc_out, fullfile(paths.fex, 'CVA_cat12_qc.csv'));
 fprintf('QC table saved to %s\n', outFile);
 
 function val = get_numeric_field(S, names)

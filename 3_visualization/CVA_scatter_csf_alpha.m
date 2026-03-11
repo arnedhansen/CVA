@@ -2,8 +2,11 @@
 %
 % Scatter plot: CSF volume vs posterior alpha power.
 
-dirs = CVA_paths();
-masterFile = fullfile(dirs.fex, 'CVA_master_matrix.mat');
+%% Setup
+startup
+[~, paths, ~, ~] = setup('CVA');
+
+masterFile = fullfile(paths.fex, 'CVA_master_matrix.mat');
 if ~exist(masterFile, 'file')
     warning('Missing file: %s. Run CVA_master_matrix first.', masterFile);
     return;
@@ -24,5 +27,5 @@ title('CSF vs posterior alpha power');
 grid on;
 lsline;
 
-exportgraphics(fig, fullfile(dirs.figures, 'CVA_scatter_csf_alpha.png'), 'Resolution', 300);
+exportgraphics(fig, fullfile(paths.figures, 'CVA_scatter_csf_alpha.png'), 'Resolution', 300);
 close(fig);

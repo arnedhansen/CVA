@@ -7,16 +7,12 @@
 %   2. Identify IAF as spectral peak in 8-14 Hz over posterior cluster
 %   3. Extract mean alpha power in [IAF-4, IAF+2] Hz
 %
-% Output: dirs.fex/CVA_alpha_power.mat
+% Output: paths.fex/CVA_alpha_power.mat
 %   alpha_out: table with columns [subID, IAF, alpha_power]
 
 %% Setup
-if exist('CVA_paths', 'file') ~= 2
-    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
-           'and rerun this script.']);
-end
-dirs     = CVA_paths();
-subjects = CVA_get_subjects();
+startup
+[subjects, paths, ~, ~] = setup('CVA');
 
 if ~exist('ft_freqanalysis', 'file')
     error(['FieldTrip function ft_freqanalysis not found on path. ', ...
@@ -38,7 +34,7 @@ for s = 1:numel(subjects)
     subID = subjects{s};
     fprintf('[Alpha FEX] %s (%d/%d)\n', subID, s, numel(subjects));
 
-    inFile = fullfile(dirs.eeg_proc, [subID '_EC_clean.mat']);
+    inFile = fullfile(paths.eeg_proc, [subID '_EC_clean.mat']);
     if ~exist(inFile, 'file')
         warning('Preprocessed file missing: %s', subID);
         summary.missing_input = summary.missing_input + 1;
@@ -99,7 +95,7 @@ for s = 1:numel(subjects)
 end
 
 %% Save
-outFile = fullfile(dirs.fex, 'CVA_alpha_power.mat');
+outFile = fullfile(paths.fex, 'CVA_alpha_power.mat');
 save(outFile, 'alpha_out');
 fprintf('Saved alpha power for %d subjects to %s\n', height(alpha_out), outFile);
 summary.output_rows = height(alpha_out);

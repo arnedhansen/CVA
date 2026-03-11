@@ -9,12 +9,12 @@
 % Reads from CAT12 XML report files (cat_*.xml) or alternatively the
 % catROI_*.mat files in the CAT12 derivatives folder.
 %
-% Output: dirs.fex/CVA_mri_volumes.mat
+% Output: paths.fex/CVA_mri_volumes.mat
 %   vol_out: table with columns [subID, TBV, GM, WM, CSF]
 
 %% Setup
-dirs     = CVA_paths();
-subjects = CVA_get_subjects();
+startup
+[subjects, paths, ~, ~] = setup('CVA');
 
 vol_out = table();
 summary = struct();
@@ -30,7 +30,7 @@ for s = 1:numel(subjects)
     fprintf('[MRI CSF FEX] %s (%d/%d)\n', subID, s, numel(subjects));
 
     % CAT12 report XML location (adjust subfolder name if needed)
-    xmlFile = fullfile(dirs.mri_proc, subID, 'report', ...
+    xmlFile = fullfile(paths.mri_proc, subID, 'report', ...
                        ['cat_' subID '_ses-01_acq-mp2rage_brain.xml']);
 
     if ~exist(xmlFile, 'file')
@@ -84,7 +84,7 @@ for s = 1:numel(subjects)
 end
 
 %% Save
-outFile = fullfile(dirs.fex, 'CVA_mri_volumes.mat');
+outFile = fullfile(paths.fex, 'CVA_mri_volumes.mat');
 save(outFile, 'vol_out');
 fprintf('Saved MRI volumes for %d subjects to %s\n', height(vol_out), outFile);
 summary.output_rows = height(vol_out);

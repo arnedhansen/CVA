@@ -16,12 +16,12 @@
 %   Y: -120 to -60  (posterior, covers parietal-occipital)
 %   Z:  -20 to +80  (inferior-superior, covers vault)
 %
-% Output: dirs.fex/CVA_skull_thickness.mat
+% Output: paths.fex/CVA_skull_thickness.mat
 %   skull_out: table with columns [subID, skull_thickness_mm]
 
 %% Setup
-dirs     = CVA_paths();
-subjects = CVA_get_subjects();
+startup
+[subjects, paths, ~, ~] = setup('CVA');
 
 % Parietal-occipital ROI in MNI mm coordinates
 % Chosen to match posterior EEG electrode cluster (O1/O2/Oz/PO3/PO4/PO7/PO8)
@@ -46,7 +46,7 @@ for s = 1:numel(subjects)
     %   p5 = soft tissue (not needed but useful for sanity check)
     % NOTE: CAT12 writes TPMC outputs with prefix 'p4_' when TPMC is
     % enabled. Adjust filename pattern if your CAT12 version differs.
-    mriDir = fullfile(dirs.mri_proc, subID, 'mri');
+    mriDir = fullfile(paths.mri_proc, subID, 'mri');
     boneCandidates = dir(fullfile(mriDir, 'p4*.nii'));
     if isempty(boneCandidates)
         warning('Bone map not found for %s — skipping.', subID);
@@ -131,7 +131,7 @@ for s = 1:numel(subjects)
 end
 
 %% Save
-outFile = fullfile(dirs.fex, 'CVA_skull_thickness.mat');
+outFile = fullfile(paths.fex, 'CVA_skull_thickness.mat');
 save(outFile, 'skull_out');
 fprintf('Saved skull thickness for %d subjects to %s\n', height(skull_out), outFile);
 summary.output_rows = height(skull_out);

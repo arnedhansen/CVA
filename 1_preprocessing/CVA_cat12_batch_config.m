@@ -3,7 +3,7 @@
 % Builds and runs the CAT12 segmentation matlabbatch for all subjects.
 % Requires: SPM12 + CAT12 toolbox on MATLAB path.
 %
-% Output per subject in dirs.mri_proc/sub-XXXXXX/:
+% Output per subject in paths.mri_proc/sub-XXXXXX/:
 %   mri/  — tissue segments (p0, p1, p2, p3, p4 images)
 %   report/ — cat_*.xml with volumetric stats
 %   surf/ — surface reconstructions (if enabled)
@@ -12,12 +12,9 @@
 % are skipped automatically via the check at the top of the loop.
 
 %% Setup
-if exist('CVA_paths', 'file') ~= 2
-    error(['CVA functions are not on path. Run startup; setup(''CVA'') ', ...
-           'and rerun this script.']);
-end
-dirs     = CVA_paths();
-subjects = CVA_get_subjects();
+startup
+[subjects, paths, ~, ~] = setup('CVA');
+
 summary = struct();
 summary.total_subjects = numel(subjects);
 summary.already_processed = 0;
@@ -27,7 +24,7 @@ summary.queued = 0;
 
 % Verify SPM + CAT12 are available
 if ~exist('spm', 'file')
-    add_spm12_if_available(dirs);
+    add_spm12_if_available(paths);
 end
 if ~exist('spm', 'file')
     error(['SPM12 not found on path. Set SPM12_DIR (or SPM_DIR) and rerun, ', ...
@@ -47,12 +44,12 @@ valid_subs = {};
 
 for s = 1:numel(subjects)
     subID  = subjects{s};
-    niiGz  = fullfile(dirs.mri_raw, subID, 'anat', ...
+    niiGz  = fullfile(paths.mri_raw, subID, 'anat', ...
                       [subID '_ses-01_acq-mp2rage_brain.nii.gz']);
     niiOut = strrep(niiGz, '.nii.gz', '.nii');
 
     % Skip if CAT12 report already exists (resumable)
-    xmlCheck = fullfile(dirs.mri_proc, subID, 'report', ...
+    xmlCheck = fullfile(paths.mri_proc, subID, 'report', ...
                         ['cat_' subID '_ses-01_acq-mp2rage_brain.xml']);
     if exist(xmlCheck, 'file')
         fprintf('[SKIP - already processed] %s\n', subID);
@@ -94,7 +91,7 @@ CVA_log_event('cat12_batch', 'run_queued', struct( ...
     'n_decompressed', summary.decompressed));
 
 %% Build matlabbatch
-matlabbatch = CVA_cat12_build_batch(nii_files, dirs);
+matlabbatch = CVA_cat12_build_batch(nii_files, paths);
 
 %% Run
 spm_jobman('run', matlabbatch);
@@ -102,18 +99,18 @@ fprintf('\nCAT12 segmentation complete.\n');
 CVA_log_event('cat12_batch', 'segmentation_complete', struct('n_processed', numel(nii_files)));
 
 %% Move outputs to per-subject derivative folders
-CVA_cat12_move_outputs(valid_subs, nii_files, dirs);
+CVA_cat12_move_outputs(valid_subs, nii_files, paths);
 summary.moved_outputs = numel(valid_subs);
 CVA_log_event('cat12_batch', 'run_summary', summary);
 
-function add_spm12_if_available(dirs)
+function add_spm12_if_available(paths)
 envCandidates = {getenv('SPM12_DIR'), getenv('SPM_DIR')};
 
 homeDir = char(java.lang.System.getProperty('user.home'));
 userFromDataRoot = '';
-if isfield(dirs, 'eeg_raw') && ~isempty(dirs.eeg_raw)
+if isfield(paths, 'eeg_raw') && ~isempty(paths.eeg_raw)
     % Infer ".../Students/<user>/toolboxes" from ".../Students/<user>/CVA/data/EEG"
-    userFromDataRoot = fileparts(fileparts(fileparts(dirs.eeg_raw)));
+    userFromDataRoot = fileparts(fileparts(fileparts(paths.eeg_raw)));
 end
 
 defaultCandidates = {
