@@ -16,7 +16,7 @@
 %   Y: -120 to -60  (posterior, covers parietal-occipital)
 %   Z:  -20 to +80  (inferior-superior, covers vault)
 %
-% Output: paths.fex/CVA_skull_thickness.mat
+% Output: paths.mri_fex/CVA_skull_thickness.mat
 %   skull_out: table with columns [subID, skull_thickness_mm]
 
 %% Setup
@@ -41,12 +41,9 @@ for s = 1:numel(subjects)
     subID = subjects{s};
     fprintf('[Skull FEX] %s (%d/%d)\n', subID, s, numel(subjects));
 
-    % CAT12 tissue class outputs in mri/ subfolder:
-    %   p4 = bone (compact + spongy)
-    %   p5 = soft tissue (not needed but useful for sanity check)
-    % NOTE: CAT12 writes TPMC outputs with prefix 'p4_' when TPMC is
-    % enabled. Adjust filename pattern if your CAT12 version differs.
-    mriDir = fullfile(paths.mri_proc, subID, 'mri');
+    % CAT12 TPMC outputs live in anat/mri/ relative to paths.mri_proc
+    % p4 = bone probability map (requires TPMC enabled in preprocessing)
+    mriDir = fullfile(paths.mri_proc, subID, 'anat', 'mri');
     boneCandidates = dir(fullfile(mriDir, 'p4*.nii'));
     if isempty(boneCandidates)
         warning('Bone map not found for %s — skipping.', subID);
@@ -131,7 +128,7 @@ for s = 1:numel(subjects)
 end
 
 %% Save
-outFile = fullfile(paths.fex, 'CVA_skull_thickness.mat');
+outFile = fullfile(paths.mri_fex, 'CVA_skull_thickness.mat');
 save(outFile, 'skull_out');
 fprintf('Saved skull thickness for %d subjects to %s\n', height(skull_out), outFile);
 summary.output_rows = height(skull_out);

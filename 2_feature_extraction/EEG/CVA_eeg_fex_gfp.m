@@ -5,7 +5,7 @@
 % GFP = std across all electrodes at each time point, averaged over recording.
 % Spectral GFP uses the same IAF-relative alpha band as CVA_eeg_fex_alpha.
 %
-% Output: paths.fex/CVA_gfp.mat
+% Output: paths.eeg_fex/CVA_gfp.mat
 %   gfp_out: table with columns [subID, gfp_mean, gfp_alpha]
 
 %% Setup
@@ -18,7 +18,7 @@ if ~exist('ft_freqanalysis', 'file')
 end
 
 % Load IAF values from alpha extraction
-load(fullfile(paths.fex, 'CVA_alpha_power.mat'), 'alpha_out');
+load(fullfile(paths.eeg_fex, 'CVA_alpha_power.mat'), 'alpha_out');
 
 gfp_out = table();
 summary = struct();
@@ -87,7 +87,7 @@ for s = 1:numel(subjects)
 end
 
 %% Save
-outFile = fullfile(paths.fex, 'CVA_gfp.mat');
+outFile = fullfile(paths.eeg_fex, 'CVA_gfp.mat');
 save(outFile, 'gfp_out');
 fprintf('Saved GFP for %d subjects to %s\n', height(gfp_out), outFile);
 summary.output_rows = height(gfp_out);

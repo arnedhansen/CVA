@@ -7,7 +7,7 @@
 %   2. Identify IAF as spectral peak in 8-14 Hz over posterior cluster
 %   3. Extract mean alpha power in [IAF-4, IAF+2] Hz
 %
-% Output: paths.fex/CVA_alpha_power.mat
+% Output: paths.eeg_fex/CVA_alpha_power.mat
 %   alpha_out: table with columns [subID, IAF, alpha_power]
 
 %% Setup
@@ -95,7 +95,7 @@ for s = 1:numel(subjects)
 end
 
 %% Save
-outFile = fullfile(paths.fex, 'CVA_alpha_power.mat');
+outFile = fullfile(paths.eeg_fex, 'CVA_alpha_power.mat');
 save(outFile, 'alpha_out');
 fprintf('Saved alpha power for %d subjects to %s\n', height(alpha_out), outFile);
 summary.output_rows = height(alpha_out);

@@ -9,7 +9,7 @@
 startup
 [~, paths, ~, ~] = setup('CVA');
 
-alphaFile = fullfile(paths.fex, 'CVA_alpha_power.mat');
+alphaFile = fullfile(paths.eeg_fex, 'CVA_alpha_power.mat');
 if ~exist(alphaFile, 'file')
     warning('Missing file: %s. Run CVA_eeg_fex_alpha first.', alphaFile);
     return;
@@ -38,7 +38,7 @@ ylabel('Count');
 title('Posterior alpha power distribution');
 grid on;
 
-masterFile = fullfile(paths.fex, 'CVA_master_matrix.mat');
+masterFile = fullfile(paths.master, 'CVA_master_matrix.mat');
 if exist(masterFile, 'file')
     load(masterFile, 'master');
     if ~isempty(master) && all(ismember({'age_group','alpha_power'}, master.Properties.VariableNames))

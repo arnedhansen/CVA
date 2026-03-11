@@ -10,7 +10,7 @@
 startup
 [~, paths, ~, ~] = setup('CVA');
 
-load(fullfile(paths.fex, 'CVA_master_matrix.mat'), 'master');
+load(fullfile(paths.master, 'CVA_master_matrix.mat'), 'master');
 inputN = height(master);
 
 %% Restrict to young participants for stage 1

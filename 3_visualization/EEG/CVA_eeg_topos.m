@@ -12,7 +12,7 @@ if ~exist('ft_topoplotER', 'file') || ~exist('ft_freqanalysis', 'file')
            'Add FieldTrip and rerun.']);
 end
 
-alphaFile = fullfile(paths.fex, 'CVA_alpha_power.mat');
+alphaFile = fullfile(paths.eeg_fex, 'CVA_alpha_power.mat');
 if ~exist(alphaFile, 'file')
     warning('Missing file: %s. Run CVA_eeg_fex_alpha first.', alphaFile);
     return;

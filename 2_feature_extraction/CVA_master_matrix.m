@@ -3,7 +3,7 @@
 % Merges all feature tables into one master matrix for statistical analysis.
 % Subjects missing any modality are flagged and excluded.
 %
-% Output: paths.fex/CVA_master_matrix.mat + CVA_master_matrix.csv
+% Output: paths.master/CVA_master_matrix.mat + CVA_master_matrix.csv
 %   master: table with columns:
 %     [subID, age_mid, age_group, sex,
 %      CSF, GM, WM, TBV, skull_thickness_mm,
@@ -14,11 +14,11 @@ startup
 [~, paths, ~, ~] = setup('CVA');
 
 %% Load feature tables
-load(fullfile(paths.fex, 'CVA_demographics.mat'),    'demo_out');
-load(fullfile(paths.fex, 'CVA_mri_volumes.mat'),     'vol_out');
-load(fullfile(paths.fex, 'CVA_skull_thickness.mat'), 'skull_out');
-load(fullfile(paths.fex, 'CVA_alpha_power.mat'),     'alpha_out');
-load(fullfile(paths.fex, 'CVA_gfp.mat'),             'gfp_out');
+load(fullfile(paths.demo_fex, 'CVA_demographics.mat'), 'demo_out');
+load(fullfile(paths.mri_fex, 'CVA_mri_volumes.mat'), 'vol_out');
+load(fullfile(paths.mri_fex, 'CVA_skull_thickness.mat'), 'skull_out');
+load(fullfile(paths.eeg_fex, 'CVA_alpha_power.mat'), 'alpha_out');
+load(fullfile(paths.eeg_fex, 'CVA_gfp.mat'), 'gfp_out');
 
 % Normalize table schemas so joins remain stable even when some modalities
 % have no rows (e.g., CAT12 not completed yet for the current subset).
@@ -56,8 +56,8 @@ fprintf('Final N = %d  (young: %d, old: %d)\n', ...
     sum(strcmp(master.age_group,'old')));
 
 %% Save
-outMat = fullfile(paths.fex, 'CVA_master_matrix.mat');
-outCSV = fullfile(paths.fex, 'CVA_master_matrix.csv');
+outMat = fullfile(paths.master, 'CVA_master_matrix.mat');
+outCSV = fullfile(paths.master, 'CVA_master_matrix.csv');
 save(outMat, 'master');
 writetable(master, outCSV);
 fprintf('Master matrix saved: N=%d subjects.\n', height(master));

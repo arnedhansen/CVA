@@ -7,7 +7,7 @@
 startup
 [~, paths, colors, ~] = setup('CVA');
 
-load(fullfile(paths.fex, 'CVA_alpha_power.mat'), 'alpha_out');
+load(fullfile(paths.eeg_fex, 'CVA_alpha_power.mat'), 'alpha_out');
 
 %% IAF distribution
 figure('Position', [0 0 1512 982], 'Name','IAF Distribution');

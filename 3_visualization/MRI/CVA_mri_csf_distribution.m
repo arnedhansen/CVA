@@ -6,7 +6,7 @@
 startup
 [~, paths, ~, ~] = setup('CVA');
 
-inFile = fullfile(paths.fex, 'CVA_mri_volumes.mat');
+inFile = fullfile(paths.mri_fex, 'CVA_mri_volumes.mat');
 if ~exist(inFile, 'file')
     warning('Missing file: %s. Run CVA_mri_fex_csf first.', inFile);
     return;

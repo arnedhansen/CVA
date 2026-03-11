@@ -6,7 +6,7 @@
 startup
 [~, paths, ~, ~] = setup('CVA');
 
-masterFile = fullfile(paths.fex, 'CVA_master_matrix.mat');
+masterFile = fullfile(paths.master, 'CVA_master_matrix.mat');
 if ~exist(masterFile, 'file')
     warning('Missing file: %s. Run CVA_master_matrix first.', masterFile);
     return;

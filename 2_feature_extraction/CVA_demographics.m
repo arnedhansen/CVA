@@ -3,7 +3,7 @@
 % Loads participant demographics from LEMON CSV and aligns to subject list.
 % Age bins are converted to numeric midpoints. Sex coded as 1=female, 2=male.
 %
-% Output: paths.fex/CVA_demographics.mat
+% Output: paths.demo_fex/CVA_demographics.mat
 %   demo_out: table with columns [subID, age_mid, sex, age_group]
 
 %% Setup
@@ -63,7 +63,7 @@ demo.age_group(demo.age_mid >= 55) = {'old'};
 %% Save
 demo_out = demo;
 demo_out = demo_out(~isnan(demo_out.age_mid), :);
-outFile  = fullfile(paths.fex, 'CVA_demographics.mat');
+outFile  = fullfile(paths.demo_fex, 'CVA_demographics.mat');
 save(outFile, 'demo_out');
 fprintf('Saved demographics for %d subjects.\n', height(demo_out));
 CVA_log_event('demographics', 'summary', struct( ...

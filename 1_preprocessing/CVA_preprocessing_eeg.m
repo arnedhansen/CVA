@@ -2,7 +2,7 @@
 %
 % Loads preprocessed LEMON eyes-closed EEG (.set) per subject and performs
 % any additional study-specific steps (epoch rejection, average reference).
-% Saves cleaned data to derivatives/EEG/.
+% Saves cleaned data to data/EEG/EEG-preprocessed/.
 %
 % Input:  paths.eeg_raw  / sub-XXXXXX_EC.set
 % Output: paths.eeg_proc / sub-XXXXXX_EC_clean.mat
