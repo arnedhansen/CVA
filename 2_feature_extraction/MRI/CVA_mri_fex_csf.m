@@ -1,26 +1,31 @@
 %% CVA_mri_fex_csf
 %
-% Extracts tissue volumes from CAT12 segmentation output per subject:
-%   - TBV     (total brain volume = GM + WM, in ml)
-%   - GM      (gray matter volume, in ml)
-%   - WM      (white matter volume, in ml)
-%   - CSF     (cerebrospinal fluid volume, in ml) — raw, for reference only
-%   - TIV     (total intracranial volume, in ml)
-%   - CSF_TIV (CSF as percentage of TIV: CSF / TIV * 100)
+% Extracts tissue volumes from CAT12 segmentation output per subject.
 %
-% CSF_TIV is the variable that enters statistical models. Raw CSF volume
-% correlates strongly with head size — larger heads contain more CSF purely
-% for geometric reasons, independent of atrophy. Expressing CSF as a
-% proportion of TIV removes this confound and makes the measure comparable
-% across individuals (Buckner et al., 2004).
+% Raw volumes (ml):
+%   TBV  = GM + WM  (total brain volume)
+%   GM   = gray matter
+%   WM   = white matter
+%   CSF  = cerebrospinal fluid
+%   TIV  = total intracranial volume
 %
-% TIV is read from S.subjectmeasures.vol_TIV in the CAT12 XML report.
-% All volumes are from CAT12's AMAP segmentation in native space.
+% TIV-corrected volumes (% of TIV) — these enter statistical models:
+%   CSF_TIV = CSF / TIV * 100
+%   GM_TIV  = GM  / TIV * 100
+%   WM_TIV  = WM  / TIV * 100
 %
-% Reads from CAT12 XML report files (cat_*.xml).
+% Raw volumes are retained in the output table for descriptive statistics.
+% TIV correction removes the confound of head size: larger heads contain
+% more tissue for purely geometric reasons, independent of atrophy or
+% group differences (Buckner et al., 2004).
+%
+% Source: CAT12 XML report (cat_*.xml), fields:
+%   subjectmeasures.vol_abs_CGW  → [CSF, GM, WM] in ml
+%   subjectmeasures.vol_TIV      → TIV in ml
 %
 % Output: paths.mri_fex/CVA_mri_volumes.mat
-%   vol_out: table with columns [subID, TBV, GM, WM, CSF, TIV, CSF_TIV]
+%   vol_out: table with columns
+%     [subID, TBV, GM, WM, CSF, TIV, CSF_TIV, GM_TIV, WM_TIV]
 
 %% Setup
 startup
@@ -28,36 +33,34 @@ startup
 
 vol_out = table();
 summary = struct();
-summary.total_subjects          = numel(subjects);
-summary.missing_xml             = 0;
-summary.missing_vol_abs_cgw     = 0;
-summary.bad_vol_abs_cgw_format  = 0;
-summary.missing_tiv             = 0;
-summary.bad_tiv                 = 0;
-summary.failed                  = 0;
-summary.saved                   = 0;
+summary.total_subjects         = numel(subjects);
+summary.missing_xml            = 0;
+summary.missing_vol_abs_cgw    = 0;
+summary.bad_vol_abs_cgw_format = 0;
+summary.missing_tiv            = 0;
+summary.bad_tiv                = 0;
+summary.failed                 = 0;
+summary.saved                  = 0;
 
 for s = 1:numel(subjects)
     subID = subjects{s};
     fprintf('[MRI CSF FEX] %s (%d/%d)\n', subID, s, numel(subjects));
 
-    % CAT12 report XML — located in anat/report/ relative to paths.mri_proc
     xmlFile = fullfile(paths.mri_proc, subID, 'anat', 'report', ...
                        ['cat_' subID '_ses-01_acq-mp2rage_T1w.xml']);
 
     if ~exist(xmlFile, 'file')
         warning('CAT12 XML not found for %s', subID);
         summary.missing_xml = summary.missing_xml + 1;
-        CVA_log_event('mri_csf_fex', 'subject_skip_missing_xml', struct( ...
-            'subID', subID, 'expected_xml', xmlFile));
+        CVA_log_event('mri_csf_fex', 'subject_skip_missing_xml', ...
+            struct('subID', subID, 'expected_xml', xmlFile));
         continue;
     end
 
     try
-        %% Parse CAT12 XML
         S = cat_io_xml(xmlFile);
 
-        %% Extract tissue volumes (CSF, GM, WM)
+        %% Tissue volumes
         if ~isfield(S, 'subjectmeasures') || ~isfield(S.subjectmeasures, 'vol_abs_CGW')
             warning('Missing vol_abs_CGW in CAT12 XML for %s', subID);
             summary.missing_vol_abs_cgw = summary.missing_vol_abs_cgw + 1;
@@ -66,63 +69,60 @@ for s = 1:numel(subjects)
 
         cgw = S.subjectmeasures.vol_abs_CGW;
         if numel(cgw) < 3
-            warning('Unexpected vol_abs_CGW format for %s (expected 3 values, got %d)', ...
+            warning('Unexpected vol_abs_CGW format for %s (expected 3, got %d)', ...
                 subID, numel(cgw));
             summary.bad_vol_abs_cgw_format = summary.bad_vol_abs_cgw_format + 1;
             continue;
         end
 
-        % CAT12 order in vol_abs_CGW: [CSF, GM, WM]
+        % CAT12 order: [CSF, GM, WM]
         csf = cgw(1);
         gm  = cgw(2);
         wm  = cgw(3);
         tbv = gm + wm;
 
-        %% Extract TIV
+        %% TIV
         if ~isfield(S.subjectmeasures, 'vol_TIV')
-            warning('Missing vol_TIV in CAT12 XML for %s — cannot compute CSF/TIV', subID);
+            warning('Missing vol_TIV in CAT12 XML for %s', subID);
             summary.missing_tiv = summary.missing_tiv + 1;
             continue;
         end
 
         tiv = S.subjectmeasures.vol_TIV;
-
         if ~isscalar(tiv) || ~isfinite(tiv) || tiv <= 0
             warning('Invalid vol_TIV (%.4g) for %s — skipping', tiv, subID);
             summary.bad_tiv = summary.bad_tiv + 1;
             continue;
         end
 
-        %% TIV-corrected CSF
-        % Expressed as percentage of TIV so the coefficient in regression
-        % models has an interpretable unit: 1 unit = 1 percentage point of
-        % intracranial volume occupied by CSF.
+        %% TIV-corrected volumes (% of TIV)
         csf_tiv = (csf / tiv) * 100;
+        gm_tiv  = (gm  / tiv) * 100;
+        wm_tiv  = (wm  / tiv) * 100;
 
-        fprintf('  CSF: %.1f ml | TIV: %.1f ml | CSF/TIV: %.2f%%\n', ...
-            csf, tiv, csf_tiv);
+        fprintf('  CSF: %.1fml (%.1f%%)  GM: %.1fml (%.1f%%)  WM: %.1fml (%.1f%%)  TIV: %.1fml\n', ...
+            csf, csf_tiv, gm, gm_tiv, wm, wm_tiv, tiv);
 
         %% Append
-        row     = table({subID}, tbv, gm, wm, csf, tiv, csf_tiv, ...
-                        'VariableNames', {'subID','TBV','GM','WM','CSF','TIV','CSF_TIV'});
+        row = table({subID}, tbv, gm, wm, csf, tiv, csf_tiv, gm_tiv, wm_tiv, ...
+                    'VariableNames', ...
+                    {'subID','TBV','GM','WM','CSF','TIV','CSF_TIV','GM_TIV','WM_TIV'});
         vol_out = [vol_out; row]; %#ok<AGROW>
         summary.saved = summary.saved + 1;
 
         CVA_log_event('mri_csf_fex', 'subject_processed', struct( ...
             'subID',   subID, ...
             'tbv',     tbv, ...
-            'gm',      gm, ...
-            'wm',      wm, ...
-            'csf',     csf, ...
-            'tiv',     tiv, ...
-            'csf_tiv', csf_tiv));
+            'gm',      gm,  'gm_tiv',  gm_tiv, ...
+            'wm',      wm,  'wm_tiv',  wm_tiv, ...
+            'csf',     csf, 'csf_tiv', csf_tiv, ...
+            'tiv',     tiv));
 
     catch ME
         warning('Failed for %s: %s', subID, ME.message);
         summary.failed = summary.failed + 1;
         CVA_log_event('mri_csf_fex', 'subject_failed', struct( ...
-            'subID', subID, ...
-            'error', ME.message));
+            'subID', subID, 'error', ME.message));
     end
 end
 

@@ -1,10 +1,18 @@
 %% CVA_demographics
 %
-% Loads participant demographics from LEMON CSV and aligns to subject list.
-% Age bins are converted to numeric midpoints. Sex coded as 1=female, 2=male.
+% Loads participant demographics from the LEMON CSV and aligns to the
+% subject list.
+%
+% Age is retained as the original 5-year bin string (e.g. '20-25') rather
+% than being converted to a numeric midpoint. The LEMON dataset provides
+% only binned age for privacy reasons; converting bins to midpoints implies
+% a precision that does not exist in the data and introduces arbitrary
+% rounding error. Age group (young / old) is derived directly from the bin.
+%
+% Sex is coded as numeric: 1 = female, 2 = male.
 %
 % Output: paths.demo_fex/CVA_demographics.mat
-%   demo_out: table with columns [subID, age_mid, sex, age_group]
+%   demo_out: table with columns [subID, age_bin, sex, age_group]
 
 %% Setup
 startup
@@ -12,18 +20,18 @@ startup
 
 %% Load CSV
 demoFile = resolve_demo_file(paths);
-demo = readtable(demoFile, 'Delimiter', ',', 'VariableNamingRule', 'preserve');
-rawNames = demo.Properties.VariableNames;
+demo     = readtable(demoFile, 'Delimiter', ',', 'VariableNamingRule', 'preserve');
+rawNames  = demo.Properties.VariableNames;
 normNames = lower(regexprep(rawNames, '[^a-zA-Z0-9]', ''));
 
-% Resolve required columns by name pattern (robust against extra columns).
+% Identify required columns by name pattern
 idIdx  = find(ismember(normNames, {'id','participantid','subid','subjectid'}), 1);
 sexIdx = find(contains(normNames, 'gender') | strcmp(normNames, 'sex'), 1);
 ageIdx = find(startsWith(normNames, 'age'), 1);
 
 if isempty(idIdx) || isempty(sexIdx) || isempty(ageIdx)
-    error(['Could not identify required demographics columns in CSV. ' ...
-           'Expected columns containing ID, sex/gender, and age bin.']);
+    error(['Could not identify required columns in CSV. ', ...
+           'Expected columns for ID, sex/gender, and age bin.']);
 end
 
 demo = table( ...
@@ -32,62 +40,91 @@ demo = table( ...
     string(demo{:, ageIdx}), ...
     'VariableNames', {'subID','sex','age_bin'});
 
-% Normalize ID format to sub-XXXXXX for joins with feature tables.
+%% Normalize subject ID format to sub-XXXXXX
 for i = 1:height(demo)
     sid = strtrim(demo.subID(i));
-    if startsWith(sid, "sub-")
-        demo.subID(i) = sid;
-    else
+    if ~startsWith(sid, "sub-")
         demo.subID(i) = "sub-" + sid;
-    end
-end
-
-%% Convert age bin to numeric midpoint
-% Bins observed: '20-25','25-30','30-35','60-65','65-70' etc.
-ageMid = zeros(height(demo), 1);
-for i = 1:height(demo)
-    ageBin = char(demo.age_bin(i));
-    nums = regexp(ageBin, '\d+', 'match');
-    if numel(nums) >= 2
-        ageMid(i) = mean([str2double(nums{1}), str2double(nums{2})]);
     else
-        ageMid(i) = NaN;
+        demo.subID(i) = sid;
     end
 end
-demo.age_mid = ageMid;
 
-%% Assign age group
+%% Derive age group directly from bin string
+%
+% LEMON age bins: young cohort = 20-25, 25-30, 30-35
+%                 old cohort   = 59-65, 60-65, 65-70, 70-75, 75-80
+%
+% Strategy: extract the lower bound of the bin and threshold at 55.
+% This is unambiguous for the LEMON sample (gap between 35 and 59).
+% Bins that cannot be parsed are flagged as missing.
+ageLo    = nan(height(demo), 1);
+hasValid = true(height(demo), 1);
+
+for i = 1:height(demo)
+    nums = regexp(char(demo.age_bin(i)), '\d+', 'match');
+    if ~isempty(nums)
+        ageLo(i) = str2double(nums{1});
+    else
+        hasValid(i) = false;
+        warning('Could not parse age bin "%s" for subject %s — excluding.', ...
+            char(demo.age_bin(i)), char(demo.subID(i)));
+    end
+end
+
 demo.age_group = repmat({'young'}, height(demo), 1);
-demo.age_group(demo.age_mid >= 55) = {'old'};
+demo.age_group(ageLo >= 55) = {'old'};
+
+%% Remove rows with unparseable age bins
+nRaw     = height(demo);
+demo_out = demo(hasValid, :);
+nDropped = nRaw - height(demo_out);
+
+if nDropped > 0
+    fprintf('Dropped %d subjects with unparseable age bins.\n', nDropped);
+end
+
+%% Report
+nYoung = sum(strcmp(demo_out.age_group, 'young'));
+nOld   = sum(strcmp(demo_out.age_group, 'old'));
+fprintf('Demographics loaded: N=%d  (young=%d, old=%d)\n', ...
+    height(demo_out), nYoung, nOld);
+
+% Show observed age bins for sanity check
+fprintf('Age bins (young): %s\n', ...
+    strjoin(unique(demo_out.age_bin(strcmp(demo_out.age_group,'young'))), ', '));
+fprintf('Age bins (old):   %s\n', ...
+    strjoin(unique(demo_out.age_bin(strcmp(demo_out.age_group,'old'))), ', '));
 
 %% Save
-demo_out = demo;
-demo_out = demo_out(~isnan(demo_out.age_mid), :);
-outFile  = fullfile(paths.demo_fex, 'CVA_demographics.mat');
+outFile = fullfile(paths.demo_fex, 'CVA_demographics.mat');
 save(outFile, 'demo_out');
-fprintf('Saved demographics for %d subjects.\n', height(demo_out));
-CVA_log_event('demographics', 'summary', struct( ...
-    'n_rows_raw', height(demo), ...
-    'n_rows_saved', height(demo_out), ...
-    'n_rows_dropped_missing_age', height(demo) - height(demo_out), ...
-    'source_file', demoFile));
+fprintf('Saved demographics to %s\n', outFile);
 
+CVA_log_event('demographics', 'summary', struct( ...
+    'n_rows_raw',          nRaw, ...
+    'n_rows_saved',        height(demo_out), ...
+    'n_rows_dropped',      nDropped, ...
+    'n_young',             nYoung, ...
+    'n_old',               nOld, ...
+    'source_file',         demoFile));
+
+% -------------------------------------------------------------------------
 function demoFile = resolve_demo_file(paths)
 candidates = {
     paths.demo
-    fullfile(fileparts(fileparts(fileparts(paths.eeg_raw))), 'Participants_MPILMBB_LEMON.csv')
+    fullfile(fileparts(fileparts(fileparts(paths.eeg_raw))), ...
+             'Participants_MPILMBB_LEMON.csv')
     'W:\Students\Arne\CVA\data\Participants_MPILMBB_LEMON.csv'
     'W:\Students\Arne\CVA\Participants_MPILMBB_LEMON.csv'
     '/Volumes/g_psyplafor_methlab$/Students/Arne/Participants_MPILMBB_LEMON.csv'
     '/Volumes/g_psyplafor_methlab$/Students/Arne/CVA/Participants_MPILMBB_LEMON.csv'
 };
-
 for i = 1:numel(candidates)
     if exist(candidates{i}, 'file')
         demoFile = candidates{i};
         return;
     end
 end
-
 error(['Demographics CSV not found. Checked: ', strjoin(candidates, ' | ')]);
 end
