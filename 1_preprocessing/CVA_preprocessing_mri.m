@@ -139,13 +139,16 @@ end
 % NOTE: CAT12 batch structure varies by version. This uses the FLAT opts/extopts
 % structure (no opts.segmentation, opts.surface sub-structs). If you see
 % "No field(s) named" errors, check your CAT12 version and cfg_*.m batch config.
-
-matlabbatch{1}.spm.tools.cat.estwrite.data = nii_files';  % T1w input images for segmentation
+%
+% Use absolute paths — SPM/CAT12 convert to relative by default, which causes
+% "File not found" when CAT12 runs from a different CWD.
+nii_files_abs = cellfun(@(x) spm_file(x, 'cpath'), nii_files, 'UniformOutput', false);
+matlabbatch{1}.spm.tools.cat.estwrite.data = nii_files_abs';  % T1w input images for segmentation
 
 % WMH/lesion correction input (FLAIR). Empty = T1-only (do not use T2w).
 matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = repmat({''}, numel(nii_files), 1);
 
-matlabbatch{1}.spm.tools.cat.estwrite.nproc = 8;  % parallel processes (0 = auto)
+matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;  % 0 = auto (all cores); fixed values can cause path issues
 
 % opts — basic options (flat; avoid biasstr/accstr if your CAT12 uses biasacc)
 matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm    = ...
