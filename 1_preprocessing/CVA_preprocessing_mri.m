@@ -49,7 +49,7 @@ end
 %% Collect NIfTI files and prepare output directories
 % LEMON raw structure: sub-XXX/ses-01/anat/
 %   T1w: sub-XXX_ses-01_acq-mp2rage_T1w.nii.gz     full head for CAT12
-%   T2w: sub-XXX_ses-01_T2w.nii.gz                 passed to CAT12 for skull refinement
+%   T2w: sub-XXX_ses-01_T2w.nii.gz                 optional (not used by CAT12; reserved for future use)
 
 nii_files  = {};   % T1w paths (CAT12 primary input)
 t2w_files  = {};   % T2w paths (CAT12 skull channel, one entry per subject or '')
@@ -85,7 +85,7 @@ for s = 1:numel(subjects)
 
     has_t2w = exist(t2wFile, 'file');
     if ~has_t2w
-        warning('[MRI Preprocessing] T2w not found for %s — skull segmentation will use T1w only.', subID);
+        warning('[MRI Preprocessing] T2w not found for %s (optional; CAT12 uses T1w only).', subID);
     end
 
     % Copy to mri_proc so CAT12 outputs land there 
@@ -132,74 +132,61 @@ if isempty(nii_files)
 end
 
 %% Build CAT12 matlabbatch
-% Configure full CAT12 surface + volume pipeline:
-%   - Standard tissue segmentation (GM/WM/CSF → p1/p2/p3)
-%   - TPMC enabled for skull/bone map (→ p4)
-%   - CAT12 XML report output
+% Optimized for 1 mm accuracy, CSF volume (vol_abs_CGW), and skull thickness (p4).
+%   - Standard tissue segmentation (GM/WM/CSF → p1/p2/p3) → CSF from XML
+%   - TPMC (p4 bone) → skull thickness via CVA_mri_fex_skull
 
-matlabbatch{1}.spm.tools.cat.estwrite.data = nii_files';
+matlabbatch{1}.spm.tools.cat.estwrite.data = nii_files';  % T1w input images for segmentation
 
-% T2w images for skull boundary refinement 
-% CAT12 uses the T2w as an additional channel to better delineate the
-% inner/outer skull surfaces — this directly improves p4 bone map quality.
-% For subjects without T2w, we pass an empty string (CAT12 handles this).
-matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = t2w_files';
+% WMH/lesion correction input (FLAIR). Empty = T1-only (do not use T2w).
+matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = repmat({''}, numel(nii_files), 1);
 
-% Parallel processing: use available cores 
-% Set to 0 to disable, or a specific number (e.g. 4) to limit core usage
-matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;  % 0 = auto (all cores)
+matlabbatch{1}.spm.tools.cat.estwrite.nproc = 4;  % parallel processes (0 = auto)
 
-% Segmentation options
 matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm        = ...
-    {fullfile(spm('dir'), 'tpm', 'TPM.nii')};
-matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg     = 'mni';
-matlabbatch{1}.spm.tools.cat.estwrite.opts.biasstr    = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.opts.accstr     = 0.5;
+    {fullfile(spm('dir'), 'tpm', 'TPM.nii')};  % tissue prior for affine init
+matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg     = 'mni';  % affine target space
+matlabbatch{1}.spm.tools.cat.estwrite.opts.biasstr    = 0.75;   % stronger for MP2RAGE/bone-CSF boundary
+matlabbatch{1}.spm.tools.cat.estwrite.opts.accstr     = 1;      % high preproc accuracy (1 mm target)
 
-% Extended segmentation (AMAP)
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.APP        = 1070;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.NCstr      = Inf;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.LASstr     = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.gcutstr    = 2;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.cleanupstr = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.BVCstr     = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.restypes.optimal = [1 0.3];
+% Extended segmentation (AMAP) — tuned for CSF + skull
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.APP        = 1070;  % affine preproc
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.NCstr      = Inf;   % full SANLM denoising
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.LASstr     = 0.5;   % local intensity adapt
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.gcutstr    = 0;     % SPM-like skull strip
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.cleanupstr = 0.5;   % meninges; keep sulcal CSF
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.BVCstr     = 0.7;   % stronger vessel/dura→CSF
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.restypes.fixed = [1 0.1];  % 1 mm internal res
 
-% Surface reconstruction (needed for cortical thickness; keep enabled) 
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.pbtres          = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.scale_cortex    = 0.7;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.add_parahipp    = 0.1;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.close_parahipp  = 1;
+% Surface reconstruction (1 mm res; skull from p4, not PBT)
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.pbtres          = 1;     % 1 mm thickness res
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.scale_cortex    = 0.7;   % GM/WM border init
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.add_parahipp    = 0.1;   % parahipp scaling
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.close_parahipp  = 1;     % parahipp closing
 
-% Output: tissue probability maps in native space 
-% p1 = GM, p2 = WM, p3 = CSF (standard)
-matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native  = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod     = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel  = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native  = 1;
+% Output: tissue probability maps (p1=GM, p2=WM, p3=CSF)
+matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native  = 1;   % write GM in native space
+matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod     = 0;   % no modulated normalized
+matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel  = 0;   % no Dartel export
+matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native  = 1;   % write WM in native space
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod     = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel  = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native = 1;   % write CSF in native space
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.mod    = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.dartel = 0;
 
-% TPMC: Extended tissue classes including bone (p4) 
-% p4 = bone (compact + spongy skull)
-% p5 = soft tissue (scalp)
-% p6 = air (head cavities) — not needed, kept off
-% IMPORTANT: This is what enables CVA_mri_fex_skull to find p4*.nii
+% TPMC: extended classes (p4=bone, p5=soft tissue)
 matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.native = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.mod    = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.dartel = 0;
 
-% Label maps 
+% PVE label map (tissue labels)
 matlabbatch{1}.spm.tools.cat.estwrite.output.label.native  = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped  = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel  = 0;
 
-% Jacobian / deformation fields: off 
-matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.output.warps          = [0 0];
+matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;  % no Jacobian
+matlabbatch{1}.spm.tools.cat.estwrite.output.warps          = [0 0];  % no deformations
 
 %% Run CAT12
 fprintf('[MRI Preprocessing] Starting CAT12 for %d subjects...\n', numel(nii_files));
