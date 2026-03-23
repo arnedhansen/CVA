@@ -33,14 +33,21 @@ startup
 % LEMON raw structure: sub-XXX/ses-01/anat/
 %   T1w: sub-XXX_ses-01_acq-mp2rage_T1w.nii.gz  ← full head, use for CAT12
 %   T2w: sub-XXX_ses-01_T2w.nii.gz               ← passed to CAT12 for skull refinement
-%
-% NOTE: Do NOT use the _brain.nii.gz files in MRI_Preprocessed_Derivatives —
-% those are skull-stripped and cannot produce the p4 bone map needed for
-% skull thickness estimation.
+
+% --- Diagnostic: print expected paths before looping ---
+firstSub = subjects{1};
+exampleAnat = fullfile(paths.mri_raw, firstSub, 'ses-01', 'anat');
+exampleT1w = fullfile(exampleAnat, [firstSub '_ses-01_acq-mp2rage_T1w.nii.gz']);
+fprintf('[MRI Preprocessing] paths.mri_raw = %s\n', paths.mri_raw);
+fprintf('[MRI Preprocessing] Example T1w:   %s\n', exampleT1w);
+if ~exist(paths.mri_raw, 'dir')
+    error('[MRI Preprocessing] paths.mri_raw does not exist. Check setup or data location.');
+end
 
 nii_files  = {};   % T1w paths (CAT12 primary input)
 t2w_files  = {};   % T2w paths (CAT12 skull channel, one entry per subject or '')
 valid_subjects = {};
+missing_t1w = {};  % subjects skipped due to missing T1w
 
 for s = 1:numel(subjects)
     subID   = subjects{s};
@@ -51,12 +58,12 @@ for s = 1:numel(subjects)
     t1wFile = strrep(t1wGz, '.nii.gz', '.nii');
 
     if exist(t1wGz, 'file') && ~exist(t1wFile, 'file')
-        fprintf('[PREPROC] Decompressing T1w for %s\n', subID);
+        fprintf('[MRI Preprocessing] Decompressing T1w for %s\n', subID);
         gunzip(t1wGz, anatDir);
     end
 
     if ~exist(t1wFile, 'file')
-        warning('[PREPROC] T1w not found for %s — skipping.', subID);
+        missing_t1w{end+1} = subID; %#ok<AGROW>
         continue;
     end
 
@@ -65,13 +72,13 @@ for s = 1:numel(subjects)
     t2wFile = strrep(t2wGz, '.nii.gz', '.nii');
 
     if exist(t2wGz, 'file') && ~exist(t2wFile, 'file')
-        fprintf('[PREPROC] Decompressing T2w for %s\n', subID);
+        fprintf('[MRI Preprocessing] Decompressing T2w for %s\n', subID);
         gunzip(t2wGz, anatDir);
     end
 
     has_t2w = exist(t2wFile, 'file');
     if ~has_t2w
-        warning('[PREPROC] T2w not found for %s — skull segmentation will use T1w only.', subID);
+        warning('[MRI Preprocessing] T2w not found for %s — skull segmentation will use T1w only.', subID);
     end
 
     % --- Copy to mri_proc so CAT12 outputs land there ---
@@ -97,10 +104,24 @@ for s = 1:numel(subjects)
     end
 end
 
-fprintf('[PREPROC] Found %d subjects with usable NIfTI files.\n', numel(nii_files));
+fprintf('[MRI Preprocessing] Found %d subjects with usable NIfTI files.\n', numel(nii_files));
+
+if ~isempty(missing_t1w)
+    warning('[MRI Preprocessing] T1w not found for %d subjects — skipped. Example: %s', ...
+        numel(missing_t1w), missing_t1w{1});
+    if numel(missing_t1w) <= 5
+        fprintf('[MRI Preprocessing] Missing: %s\n', strjoin(missing_t1w, ', '));
+    else
+        fprintf('[MRI Preprocessing] Missing (first 5): %s ... and %d more.\n', ...
+            strjoin(missing_t1w(1:5), ', '), numel(missing_t1w) - 5);
+    end
+end
 
 if isempty(nii_files)
-    error('[PREPROC] No NIfTI files found. Check paths.mri_raw and filename convention.');
+    error(['[MRI Preprocessing] No NIfTI files found.\n', ...
+        'Check: (1) paths.mri_raw in setup, (2) raw MRI placed at:\n', ...
+        '  %s/sub-XXXXXX/ses-01/anat/sub-XXXXXX_ses-01_acq-mp2rage_T1w.nii.gz\n', ...
+        'Example path printed above.'], paths.mri_raw);
 end
 
 %% Build CAT12 matlabbatch
@@ -177,18 +198,18 @@ matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
 matlabbatch{1}.spm.tools.cat.estwrite.output.warps          = [0 0];
 
 %% Run CAT12
-fprintf('[PREPROC] Starting CAT12 for %d subjects...\n', numel(nii_files));
-fprintf('[PREPROC] This will take approximately %d–%d minutes.\n', ...
+fprintf('[MRI Preprocessing] Starting CAT12 for %d subjects...\n', numel(nii_files));
+fprintf('[MRI Preprocessing] This will take approximately %d–%d minutes.\n', ...
     numel(nii_files) * 15, numel(nii_files) * 25);
 
 spm('defaults', 'fmri');
 spm_jobman('initcfg');
 spm_jobman('run', matlabbatch);
 
-fprintf('[PREPROC] CAT12 finished.\n');
+fprintf('[MRI Preprocessing] CAT12 finished.\n');
 
 %% Post-run: verify outputs and warn about missing files
-fprintf('[PREPROC] Verifying outputs...\n');
+fprintf('[MRI Preprocessing] Verifying outputs...\n');
 n_ok = 0; n_missing_xml = 0; n_missing_p4 = 0;
 
 for s = 1:numel(valid_subjects)
@@ -207,17 +228,17 @@ for s = 1:numel(valid_subjects)
         n_ok = n_ok + 1;
     else
         if ~xml_ok
-            warning('[PREPROC] Missing CAT12 XML report for %s', subID);
+            warning('[MRI Preprocessing] Missing CAT12 XML report for %s', subID);
             n_missing_xml = n_missing_xml + 1;
         end
         if ~p4_ok
-            warning('[PREPROC] Missing p4 bone map for %s (TPMC may not have run)', subID);
+            warning('[MRI Preprocessing] Missing p4 bone map for %s (TPMC may not have run)', subID);
             n_missing_p4 = n_missing_p4 + 1;
         end
     end
 end
 
-fprintf('[PREPROC] Complete: %d/%d subjects OK | %d missing XML | %d missing p4\n', ...
+fprintf('[MRI Preprocessing] Complete: %d/%d subjects OK | %d missing XML | %d missing p4\n', ...
     n_ok, numel(valid_subjects), n_missing_xml, n_missing_p4);
 
 %% IMPORTANT: Update paths in fex scripts

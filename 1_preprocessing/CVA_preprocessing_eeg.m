@@ -39,6 +39,7 @@ summary.total_epochs_before = 0;
 summary.total_epochs_after = 0;
 summary.total_epochs_rejected = 0;
 
+%% Run Preprocessing
 for s = 1:numel(subjects)
     subID = subjects{s};
     clc
