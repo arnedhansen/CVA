@@ -29,6 +29,21 @@
 startup
 [subjects, paths, ~, ~] = setup('CVA');
 
+% --- SPM/CAT12: ensure on path before matlabbatch (needed for spm('dir') below) ---
+% On servers (e.g. Windows W:\) startup may not add SPM. Fallback to methlab SPM:
+if ~exist('spm', 'file')
+    if ispc
+        SPM_DIR = 'W:\Students\Arne\toolboxes\spm12';
+    else
+        SPM_DIR = '/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/spm12';
+    end
+    addpath(SPM_DIR);
+    addpath(fullfile(SPM_DIR, 'toolbox', 'cat12'));
+    spm('defaults', 'fmri');
+    spm_jobman('initcfg');
+    fprintf('[MRI Preprocessing] SPM loaded from %s\n', SPM_DIR);
+end
+
 %% Collect NIfTI files and prepare output directories
 % LEMON raw structure: sub-XXX/ses-01/anat/
 %   T1w: sub-XXX_ses-01_acq-mp2rage_T1w.nii.gz  ← full head, use for CAT12
