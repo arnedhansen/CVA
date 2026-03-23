@@ -135,36 +135,42 @@ end
 % Optimized for 1 mm accuracy, CSF volume (vol_abs_CGW), and skull thickness (p4).
 %   - Standard tissue segmentation (GM/WM/CSF → p1/p2/p3) → CSF from XML
 %   - TPMC (p4 bone) → skull thickness via CVA_mri_fex_skull
+%
+% NOTE: CAT12 batch structure varies by version. This uses the FLAT opts/extopts
+% structure (no opts.segmentation, opts.surface sub-structs). If you see
+% "No field(s) named" errors, check your CAT12 version and cfg_*.m batch config.
 
 matlabbatch{1}.spm.tools.cat.estwrite.data = nii_files';  % T1w input images for segmentation
 
 % WMH/lesion correction input (FLAIR). Empty = T1-only (do not use T2w).
 matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = repmat({''}, numel(nii_files), 1);
 
-matlabbatch{1}.spm.tools.cat.estwrite.nproc = 4;  % parallel processes (0 = auto)
+matlabbatch{1}.spm.tools.cat.estwrite.nproc = 8;  % parallel processes (0 = auto)
 
-matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm        = ...
-    {fullfile(spm('dir'), 'tpm', 'TPM.nii')};  % tissue prior for affine init
-matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg     = 'mni';  % affine target space
-matlabbatch{1}.spm.tools.cat.estwrite.opts.biasstr    = 0.75;   % stronger for MP2RAGE/bone-CSF boundary
-matlabbatch{1}.spm.tools.cat.estwrite.opts.accstr     = 1;      % high preproc accuracy (1 mm target)
+% opts — basic options (flat; avoid biasstr/accstr if your CAT12 uses biasacc)
+matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm    = ...
+    {fullfile(spm('dir'), 'tpm', 'TPM.nii')};
+matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg = 'mni';
+% Use biasacc (single param) — older CAT12; remove if your version uses biasstr/accstr
+matlabbatch{1}.spm.tools.cat.estwrite.opts.biasacc = 0.75;
 
-% Extended segmentation (AMAP) — tuned for CSF + skull
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.APP        = 1070;  % affine preproc
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.NCstr      = Inf;   % full SANLM denoising
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.LASstr     = 0.5;   % local intensity adapt
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.gcutstr    = 0;     % SPM-like skull strip
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.cleanupstr = 0.5;   % meninges; keep sulcal CSF
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.BVCstr     = 0.7;   % stronger vessel/dura→CSF
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.segmentation.restypes.fixed = [1 0.1];  % 1 mm internal res
-
-% Surface reconstruction (1 mm res; skull from p4, not PBT)
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.pbtres          = 1;     % 1 mm thickness res
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.scale_cortex    = 0.7;   % GM/WM border init
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.add_parahipp    = 0.1;   % parahipp scaling
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.surface.close_parahipp  = 1;     % parahipp closing
+% extopts — flat structure (no .segmentation / .surface sub-structs)
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.APP        = 1070;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.setCOM     = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.NCstr      = -Inf;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASstr     = 0.5;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr    = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.cleanupstr = 0.5;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.BVCstr     = 0.7;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.WMHC       = 2;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.ignoreErrors = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.vox        = 1;     % 1 mm normalized output
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.pbtres     = 1;     % 1 mm thickness resolution
+% Resolution for internal processing
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.restypes.fixed = [1 0.1];
 
 % Output: tissue probability maps (p1=GM, p2=WM, p3=CSF)
+matlabbatch{1}.spm.tools.cat.estwrite.output.surface    = 0;   % skip surface (not needed for CVA)
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native  = 1;   % write GM in native space
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod     = 0;   % no modulated normalized
 matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel  = 0;   % no Dartel export
