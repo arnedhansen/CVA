@@ -11,8 +11,7 @@
 %   report/cat_*.xml  — CAT12 report with vol_abs_CGW volumetrics
 %
 % Input:  paths.mri_raw / sub-XXXXXX / ses-01 / anat /
-%           sub-XXXXXX_ses-01_acq-mp2rage_T1w.nii.gz   ← used for segmentation
-%           sub-XXXXXX_ses-01_T2w.nii.gz                ← used for skull refinement
+%           sub-XXXXXX_ses-01_acq-mp2rage_T1w.nii.gz
 %
 % Output: CAT12 outputs written to paths.mri_proc / sub-XXXXXX / anat /
 %         (CAT12 creates mri/ and report/ subfolders automatically)
@@ -48,11 +47,9 @@ end
 
 %% Collect NIfTI files and prepare output directories
 % LEMON raw structure: sub-XXX/ses-01/anat/
-%   T1w: sub-XXX_ses-01_acq-mp2rage_T1w.nii.gz     full head for CAT12
-%   T2w: sub-XXX_ses-01_T2w.nii.gz                 optional (not used by CAT12; reserved for future use)
+%   T1w: sub-XXX_ses-01_acq-mp2rage_T1w.nii.gz   full head for CAT12
 
 nii_files  = {};   % T1w paths (CAT12 primary input)
-t2w_files  = {};   % T2w paths (CAT12 skull channel, one entry per subject or '')
 valid_subjects = {};
 missing_t1w = {};  % subjects skipped due to missing T1w
 
@@ -60,7 +57,7 @@ for s = 1:numel(subjects)
     subID   = subjects{s};
     anatDir = fullfile(paths.mri_raw, subID, 'ses-01', 'anat');
 
-    % T1w (MP2RAGE, full head) 
+    % T1w (MP2RAGE, full head)
     t1wGz   = fullfile(anatDir, [subID '_ses-01_acq-mp2rage_T1w.nii.gz']);
     t1wFile = strrep(t1wGz, '.nii.gz', '.nii');
 
@@ -74,21 +71,7 @@ for s = 1:numel(subjects)
         continue;
     end
 
-    % T2w (for skull boundary refinement in CAT12) 
-    t2wGz   = fullfile(anatDir, [subID '_ses-01_T2w.nii.gz']);
-    t2wFile = strrep(t2wGz, '.nii.gz', '.nii');
-
-    if exist(t2wGz, 'file') && ~exist(t2wFile, 'file')
-        fprintf('[MRI Preprocessing] Decompressing T2w for %s\n', subID);
-        gunzip(t2wGz, anatDir);
-    end
-
-    has_t2w = exist(t2wFile, 'file');
-    if ~has_t2w
-        warning('[MRI Preprocessing] T2w not found for %s (optional; CAT12 uses T1w only).', subID);
-    end
-
-    % Copy to mri_proc so CAT12 outputs land there 
+    % Copy to mri_proc so CAT12 outputs land there
     outDir = fullfile(paths.mri_proc, subID, 'anat');
     if ~exist(outDir, 'dir'), mkdir(outDir); end
 
@@ -99,16 +82,6 @@ for s = 1:numel(subjects)
 
     nii_files{end+1}      = destT1w; %#ok<AGROW>
     valid_subjects{end+1} = subID;   %#ok<AGROW>
-
-    if has_t2w
-        destT2w = fullfile(outDir, [subID '_ses-01_T2w.nii']);
-        if ~exist(destT2w, 'file')
-            copyfile(t2wFile, destT2w);
-        end
-        t2w_files{end+1} = destT2w; %#ok<AGROW>
-    else
-        t2w_files{end+1} = ''; %#ok<AGROW>
-    end
 end
 
 fprintf('[MRI Preprocessing] Found %d subjects with usable NIfTI files.\n', numel(nii_files));
@@ -145,7 +118,7 @@ end
 nii_files_abs = cellfun(@(x) spm_file(x, 'cpath'), nii_files, 'UniformOutput', false);
 matlabbatch{1}.spm.tools.cat.estwrite.data = nii_files_abs';  % T1w input images for segmentation
 
-% WMH/lesion correction input (FLAIR). Empty = T1-only (do not use T2w).
+% WMH/lesion correction: data_wmh is for FLAIR only. Empty = T1-only WMH detection.
 matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = repmat({''}, numel(nii_files), 1);
 
 matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;  % 0 = auto (all cores); fixed values can cause path issues
@@ -163,12 +136,16 @@ matlabbatch{1}.spm.tools.cat.estwrite.extopts.APP        = 1070;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.setCOM     = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASstr     = 0.5;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr    = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.WMHC       = 2;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.WMHC       = 1;   % 1 = T1-only (no FLAIR in data_wmh)
 % registration: explicit Shooting struct (avoids "unresolved dependencies" when omitted or '<UNDEFINED>')
 shootingtpm = cat_get_defaults('extopts.shootingtpm');
 if isempty(shootingtpm) || ~exist(shootingtpm{1}, 'file')
-    tplDir = fullfile(fileparts(which('spm_CAT')), 'templates_MNI152NLin2009cAsym');
-    tplPath = fullfile(tplDir, 'Template_0_GS.nii');
+    % Fallback: locate CAT12 templates via cat_run or cat_get_defaults (spm_CAT is not a valid function)
+    catDir = fileparts(which('cat_run'));
+    if isempty(catDir)
+        catDir = fileparts(which('cat_get_defaults'));
+    end
+    tplPath = fullfile(catDir, 'templates_MNI152NLin2009cAsym', 'Template_0_GS.nii');
     if exist(tplPath, 'file')
         shootingtpm = {tplPath};
     else
