@@ -144,30 +144,32 @@ matlabbatch{1}.spm.tools.cat.estwrite.data = nii_files';  % T1w input images for
 
 % WMH/lesion correction input (FLAIR). Empty = T1-only (do not use T2w).
 matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = repmat({''}, numel(nii_files), 1);
+matlabbatch{1}.spm.tools.cat.estwrite.useprior = '';
 
-matlabbatch{1}.spm.tools.cat.estwrite.nproc = 8;  % parallel processes (0 = auto)
+% nproc=1 to avoid parallel cwd/path issues; increase once it works
+matlabbatch{1}.spm.tools.cat.estwrite.nproc = 1;
 
-% opts — basic options (flat; avoid biasstr/accstr if your CAT12 uses biasacc)
+% opts — match Cat12OneSubject_job structure
 matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm    = ...
     {fullfile(spm('dir'), 'tpm', 'TPM.nii')};
 matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg = 'mni';
-% Use biasacc (single param) — older CAT12; remove if your version uses biasstr/accstr
 matlabbatch{1}.spm.tools.cat.estwrite.opts.biasacc = 0.75;
 
-% extopts — flat structure (no .segmentation / .surface sub-structs)
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.APP        = 1070;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.setCOM     = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.NCstr      = -Inf;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASstr     = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr    = 0;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.cleanupstr = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.BVCstr     = 0.7;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.WMHC       = 2;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.ignoreErrors = 1;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.vox        = 1;     % 1 mm normalized output
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.pbtres     = 1;     % 1 mm thickness resolution
-% Resolution for internal processing
+% extopts — ONLY fields accepted by this CAT12 (see Cat12OneSubject_job.m)
+% Do NOT add: NCstr, cleanupstr, BVCstr, pbtres (cause "No field(s) named" and broken run)
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.restypes.fixed = [1 0.1];
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.setCOM     = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.APP        = 1070;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.affmod     = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASstr     = 0.5;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASmyostr  = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr    = 0;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.WMHC       = 2;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration = '<UNDEFINED>';
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.vox        = 1;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.bb         = 12;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.SRP        = 22;
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.ignoreErrors = 1;
 
 % Output: tissue probability maps (p1=GM, p2=WM, p3=CSF)
 matlabbatch{1}.spm.tools.cat.estwrite.output.surface    = 0;   % skip surface (not needed for CVA)
