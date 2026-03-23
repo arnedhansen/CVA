@@ -56,6 +56,6 @@ if exist(fileparts(preferred), 'dir')
     return;
 end
 
-% Fallback: stay inside the resolved data root.
-logDir = fullfile(resolve_data_root(), 'logs');
+% Fallback: stay inside the resolved data root (via functions repo).
+logDir = fullfile(get_cva_data_root(), 'logs');
 end

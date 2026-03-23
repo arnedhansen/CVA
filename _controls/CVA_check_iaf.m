@@ -1,7 +1,7 @@
 %% CVA_check_iaf
 %
 % Plots IAF distribution and flags subjects with boundary or missing IAF.
-% Run after CVA_eeg_fex_alpha.
+% Run after CVA_eeg_fex_alpha_gfp.
 
 %% Setup
 startup

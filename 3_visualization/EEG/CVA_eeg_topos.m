@@ -14,7 +14,7 @@ end
 
 alphaFile = fullfile(paths.eeg_fex, 'CVA_alpha_power.mat');
 if ~exist(alphaFile, 'file')
-    warning('Missing file: %s. Run CVA_eeg_fex_alpha first.', alphaFile);
+    warning('Missing file: %s. Run CVA_eeg_fex_alpha_gfp first.', alphaFile);
     return;
 end
 load(alphaFile, 'alpha_out');

@@ -1,10 +1,21 @@
 %% CVA_preprocessing_eeg
 %
 % Loads preprocessed LEMON eyes-closed EEG (.set) per subject and performs
-% any additional study-specific steps (epoch rejection, average reference).
-% Saves cleaned data to data/EEG/EEG-preprocessed/.
+% study-specific steps. Saves to data/EEG/EEG-preprocessed/.
 %
-% Input:  paths.eeg_raw  / sub-XXXXXX_EC.set
+% LEMON preprocessed data (Babayan et al. 2019) already includes:
+%   - Downsampling 2500→250 Hz, bandpass 1–45 Hz
+%   - Bad channel rejection, bad-interval removal (visual)
+%   - PCA, ICA (Infomax), artifact component removal, back-projection
+%   - Reference: FCz (no average re-reference applied)
+%
+% This script adds ONLY:
+%   - Re-reference to average (LEMON left data FCz-referenced)
+%   - Epoch segmentation (2 s, no overlap)
+%   - Automated epoch rejection (peak-to-peak > 90 µV) — complementary to
+%     LEMON's visual bad-interval removal; study-specific QC
+%
+% Input:  paths.eeg_raw  / sub-XXXXXX / sub-XXXXXX_EC.set
 % Output: paths.eeg_proc / sub-XXXXXX_EC_clean.mat
 
 %% Setup
@@ -48,7 +59,7 @@ for s = 1:numel(subjects)
         cfg.dataset = inFile;
         data        = ft_preprocessing(cfg);
 
-        %% Re-reference to average
+        %% Re-reference to average (LEMON data is FCz-referenced; not done upstream)
         cfg            = [];
         cfg.reref      = 'yes';
         cfg.refchannel = 'all';
@@ -70,7 +81,7 @@ for s = 1:numel(subjects)
             continue;
         end
 
-        %% Reject noisy epochs (peak-to-peak > 90 uV)
+        %% Reject noisy epochs (peak-to-peak > 90 µV) — CVA-specific QC, not in LEMON
         nEpochsBefore = numel(data.trial);
 
         % Use threshold in the native data unit to avoid over-rejection.

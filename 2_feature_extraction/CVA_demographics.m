@@ -19,7 +19,7 @@ startup
 [~, paths, ~, ~] = setup('CVA');
 
 %% Load CSV
-demoFile = resolve_demo_file(paths);
+demoFile = '/Volumes/g_psyplafor_methlab$/Students/Arne/CVA/data/LEMON/demographics/Participants_MPILMBB_LEMON.csv';
 demo     = readtable(demoFile, 'Delimiter', ',', 'VariableNamingRule', 'preserve');
 rawNames  = demo.Properties.VariableNames;
 normNames = lower(regexprep(rawNames, '[^a-zA-Z0-9]', ''));
@@ -108,23 +108,3 @@ CVA_log_event('demographics', 'summary', struct( ...
     'n_young',             nYoung, ...
     'n_old',               nOld, ...
     'source_file',         demoFile));
-
-% -------------------------------------------------------------------------
-function demoFile = resolve_demo_file(paths)
-candidates = {
-    paths.demo
-    fullfile(fileparts(fileparts(fileparts(paths.eeg_raw))), ...
-             'Participants_MPILMBB_LEMON.csv')
-    'W:\Students\Arne\CVA\data\Participants_MPILMBB_LEMON.csv'
-    'W:\Students\Arne\CVA\Participants_MPILMBB_LEMON.csv'
-    '/Volumes/g_psyplafor_methlab$/Students/Arne/Participants_MPILMBB_LEMON.csv'
-    '/Volumes/g_psyplafor_methlab$/Students/Arne/CVA/Participants_MPILMBB_LEMON.csv'
-};
-for i = 1:numel(candidates)
-    if exist(candidates{i}, 'file')
-        demoFile = candidates{i};
-        return;
-    end
-end
-error(['Demographics CSV not found. Checked: ', strjoin(candidates, ' | ')]);
-end
