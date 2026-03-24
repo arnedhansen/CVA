@@ -135,7 +135,8 @@ matlabbatch{1}.spm.tools.cat.estwrite.opts.biasacc = 0.75;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.APP        = 1070;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.setCOM     = 1;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASstr     = 0.5;
-matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr    = 0;
+% gcutstr: 0=SPM (loose), eps-1=graph-cut, 2=APRG (default, best). Use 2 to exclude edge zeros.
+matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr    = 2;
 matlabbatch{1}.spm.tools.cat.estwrite.extopts.WMHC       = 1;   % 1 = T1-only (no FLAIR in data_wmh)
 % registration: explicit Shooting struct (avoids "unresolved dependencies" when omitted or '<UNDEFINED>')
 shootingtpm = cat_get_defaults('extopts.shootingtpm');
