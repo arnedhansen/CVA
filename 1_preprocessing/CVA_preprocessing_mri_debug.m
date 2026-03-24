@@ -78,14 +78,22 @@ else
     report{end+1} = '    -> FAIL (file not found)'; fprintf('%s\n', report{end});
 end
 
-% Shooting template (CAT12)
+% Shooting template (CAT12) - structure varies by version
 shootingtpm = cat_get_defaults('extopts.shootingtpm');
 if isempty(shootingtpm) || ~exist(shootingtpm{1}, 'file')
     catDir = fileparts(which('cat_run'));
     if isempty(catDir), catDir = fileparts(which('cat_get_defaults')); end
-    tplPath = fullfile(catDir, 'templates_MNI152NLin2009cAsym', 'Template_0_GS.nii');
-    if exist(tplPath, 'file')
-        shootingtpm = {tplPath};
+    % Try common template locations (CAT12 version-dependent)
+    tplCandidates = {
+        fullfile(catDir, 'templates_MNI152NLin2009cAsym', 'Template_0_GS.nii')
+        fullfile(catDir, 'templates_volumes', 'Template_0_GS.nii')
+        fullfile(catDir, 'templates', 'Template_0_GS.nii')
+    };
+    for k = 1:numel(tplCandidates)
+        if exist(tplCandidates{k}, 'file')
+            shootingtpm = {tplCandidates{k}};
+            break;
+        end
     end
 end
 
@@ -96,6 +104,7 @@ if ~isempty(shootingtpm) && exist(shootingtpm{1}, 'file')
     report{end+1} = '    -> OK'; fprintf('%s\n', report{end});
 else
     report{end+1} = '    -> FAIL (shooting template not found)'; fprintf('%s\n', report{end});
+    report{end+1} = '    Check: cat_get_defaults(''extopts.shootingtpm'') and templates_* folders'; fprintf('%s\n', report{end});
 end
 
 %% 4. Input T1w files (first few subjects)
