@@ -191,7 +191,22 @@ fprintf('[MRI Preprocessing] This will take approximately %d–%d minutes.\n', .
 
 spm('defaults', 'fmri');
 spm_jobman('initcfg');
+
+% CAT12 uses relative paths (e.g. .\anat\) internally; they resolve relative to CWD.
+% If CWD is wrong (e.g. Documents), "File not found or permission denied" occurs.
+% Set CWD to first subject's output dir (CAT12 expects subject folder as base).
+origCWD = pwd;
+subj0Dir = fullfile(paths.mri_proc, valid_subjects{1});
+if exist(subj0Dir, 'dir')
+    cd(subj0Dir);
+    fprintf('[MRI Preprocessing] CWD set to %s for CAT12 relative paths\n', subj0Dir);
+end
+
 spm_jobman('run', matlabbatch);
+
+if exist('origCWD', 'var')
+    try cd(origCWD); catch, end
+end
 
 fprintf('[MRI Preprocessing] CAT12 finished.\n');
 
