@@ -45,6 +45,13 @@ if ~exist(paths.mri_raw, 'dir')
     error('[MRI Preprocessing] paths.mri_raw does not exist. Check setup or data location.');
 end
 
+%% Options
+% Edge zero fill: MP2RAGE often has zeros at FOV edges (air, ratio failures).
+% Filling border-connected zeros reduces "zeros within brain" / Stroke Lesion alert.
+% Skull (p4) preserved for CVA_mri_fex_skull.
+USE_EDGE_ZERO_FILL = true;   % set false to disable
+EDGE_MARGIN_MM     = 15;     % treat voxels within this mm of image edge as suspect
+
 %% Collect NIfTI files and prepare output directories
 % LEMON raw structure: sub-XXX/ses-01/anat/
 %   T1w: sub-XXX_ses-01_acq-mp2rage_T1w.nii.gz   full head for CAT12
@@ -78,6 +85,33 @@ for s = 1:numel(subjects)
     destT1w = fullfile(outDir, [subID '_ses-01_acq-mp2rage_T1w.nii']);
     if ~exist(destT1w, 'file')
         copyfile(t1wFile, destT1w);
+    end
+
+    % Edge zero fill: replace zeros near FOV edges to reduce CAT12 zeros-in-brain alert
+    if USE_EDGE_ZERO_FILL
+        try
+            V = spm_vol(destT1w);
+            Y = spm_read_vols(V);
+            vox_mm = sqrt(sum(V.mat(1:3,1:3).^2, 1));  % voxel size in mm
+            margin_vox = max(1, round(EDGE_MARGIN_MM ./ vox_mm));
+            nX = size(Y, 1); nY = size(Y, 2); nZ = size(Y, 3);
+            [x,y,z] = ndgrid(1:nX, 1:nY, 1:nZ);
+            edgeMask = (x <= margin_vox(1) | x > nX - margin_vox(1)) | ...
+                       (y <= margin_vox(2) | y > nY - margin_vox(2)) | ...
+                       (z <= margin_vox(3) | z > nZ - margin_vox(3));
+            fillVal = min(Y(Y > 0));
+            if ~isempty(fillVal) && isfinite(fillVal)
+                toFill = edgeMask & (Y == 0);
+                if any(toFill(:))
+                    Y(toFill) = fillVal;
+                    V.fname = destT1w;
+                    spm_write_vol(V, Y);
+                    fprintf('[MRI Preprocessing] Edge zero fill: %s (%d voxels)\n', subID, sum(toFill(:)));
+                end
+            end
+        catch ME
+            warning('[MRI Preprocessing] Edge zero fill failed for %s: %s', subID, ME.message);
+        end
     end
 
     nii_files{end+1}      = destT1w; %#ok<AGROW>
