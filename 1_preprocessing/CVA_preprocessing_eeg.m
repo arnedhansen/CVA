@@ -1,7 +1,7 @@
 %% CVA_preprocessing_eeg
 %
 % Loads preprocessed LEMON eyes-closed EEG (.set) per subject and performs
-% study-specific steps. Saves to data/EEG/EEG-preprocessed/.
+% study-specific steps. Saves to paths.eeg_proc (EEG-preprocessed).
 %
 % LEMON preprocessed data (Babayan et al. 2019) already includes:
 %   - Downsampling 2500→250 Hz, bandpass 1–45 Hz
@@ -15,8 +15,8 @@
 %   - Automated epoch rejection (peak-to-peak > 90 µV) — complementary to
 %     LEMON's visual bad-interval removal; study-specific QC
 %
-% Input:  paths.eeg_raw  / sub-XXXXXX / sub-XXXXXX_EC.set
-% Output: paths.eeg_proc / sub-XXXXXX_EC_clean.mat
+% Input:  paths.eeg_downloaded / sub-XXXXXX / sub-XXXXXX_EC.set
+% Output: paths.eeg_proc (EEG-preprocessed) / sub-XXXXXX_EC_clean.mat
 
 %% Setup
 startup
@@ -45,7 +45,7 @@ for s = 1:numel(subjects)
     clc
     fprintf('[EEG Preprocessing] %s (%d/%d)\n', subID, s, numel(subjects));
 
-    inFile = fullfile(paths.eeg_raw, subID, [subID '_EC.set']);
+    inFile = fullfile(paths.eeg_downloaded, subID, [subID '_EC.set']);
     if ~exist(inFile, 'file')
         warning('File not found, skipping: %s', inFile);
         summary.missing_input = summary.missing_input + 1;

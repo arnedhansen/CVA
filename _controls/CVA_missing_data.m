@@ -14,7 +14,7 @@ for s = 1:numel(subjects)
     subID = subjects{s};
 
     missing(s).subID    = subID;
-    missing(s).EEG      = exist(fullfile(paths.eeg_raw, subID, [subID '_EC.set']), 'file') > 0;
+    missing(s).EEG      = exist(fullfile(paths.eeg_downloaded, subID, [subID '_EC.set']), 'file') > 0;
     missing(s).MRI_anat = exist(fullfile(paths.mri_raw, subID, 'ses-01', 'anat', ...
                                 [subID '_ses-01_acq-mp2rage_T1w.nii.gz']), 'file') > 0;
     missing(s).MRI_CAT12 = exist(fullfile(paths.mri_proc, subID), 'dir') > 0;
