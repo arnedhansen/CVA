@@ -70,7 +70,8 @@ if exist(tpmPath, 'file')
     report{end+1} = '    -> OK (exists)'; fprintf('%s\n', report{end});
     try
         V = spm_vol(tpmPath);
-        report{end+1} = sprintf('    -> Readable, dim = [%s]', num2str(V.dim)); fprintf('%s\n', report{end});
+        % TPM is multi-volume; V may be array — use V(1).dim to avoid "too many args"
+        report{end+1} = sprintf('    -> Readable, dim = [%s], n = %d', num2str(V(1).dim), numel(V)); fprintf('%s\n', report{end});
     catch e
         report{end+1} = sprintf('    -> FAIL to read: %s', e.message); fprintf('%s\n', report{end});
     end
